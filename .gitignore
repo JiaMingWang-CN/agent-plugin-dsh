@@ -1,0 +1,6 @@
+# 会话/工具目录，不纳入版本管理
+preferences/
+.codegraph/
+
+# 规划文档，不提交
+codex-plugin-dsh/PLAN.md

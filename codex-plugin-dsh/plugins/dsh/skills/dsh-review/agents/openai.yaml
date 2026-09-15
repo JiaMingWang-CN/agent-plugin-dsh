@@ -1,0 +1,4 @@
+interface:
+  display_name: "DSH Review"
+  short_description: "Review the current changes with DeepSeek Harness"
+  default_prompt: "Have DSH review the current changes in this repository and report its findings."

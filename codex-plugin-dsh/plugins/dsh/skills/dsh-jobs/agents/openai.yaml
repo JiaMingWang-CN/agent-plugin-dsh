@@ -1,0 +1,4 @@
+interface:
+  display_name: "DSH Jobs"
+  short_description: "Check DSH job status, results, and cancellation"
+  default_prompt: "Show me the status of the DSH jobs in this workspace."

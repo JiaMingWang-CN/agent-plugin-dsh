@@ -1,0 +1,17 @@
+{
+  "name": "dsh",
+  "interface": {
+    "displayName": "DeepSeek Harness"
+  },
+  "plugins": [
+    {
+      "name": "dsh",
+      "source": "./plugins/dsh",
+      "policy": {
+        "installation": "AVAILABLE"
+      },
+      "version": "0.1.0",
+      "description": "Delegate tasks and code review from Codex to DeepSeek Harness (DSH)."
+    }
+  ]
+}

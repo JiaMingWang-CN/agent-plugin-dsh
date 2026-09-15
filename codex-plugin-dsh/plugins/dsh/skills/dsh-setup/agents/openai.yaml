@@ -1,0 +1,4 @@
+interface:
+  display_name: "DSH Setup"
+  short_description: "Diagnose the DeepSeek Harness setup"
+  default_prompt: "Check that DSH is installed and configured correctly for this workspace."

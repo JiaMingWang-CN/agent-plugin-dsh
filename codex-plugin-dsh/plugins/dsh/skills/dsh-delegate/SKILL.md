@@ -1,0 +1,94 @@
+---
+name: dsh-delegate
+description: Delegate a coding task to DeepSeek Harness (DSH) or continue a previous DSH session. Use when the user says things like "ask DSH to ...", "let DeepSeek do ...", "hand this to dsh", "continue the DSH session", or otherwise asks another agent to investigate, fix, implement, or run something in this workspace.
+---
+
+# Delegate to DSH
+
+DSH runs as its own agent in this workspace. It reads the repository itself, so pass the task, not
+the context.
+
+## Locating the companion script
+
+This skill directory is the one containing this `SKILL.md`. Resolve the companion script from that
+path in the same shell call you use to run it — never hardcode an install location:
+
+```sh
+DSH_COMPANION="$(dirname "<absolute path of this SKILL.md>")/../../scripts/dsh-companion.mjs"
+```
+
+Run every command as **one** shell invocation and return its stdout to the user **verbatim**. Do not
+summarise, reformat, or editorialise. Progress lines arrive on stderr; keep them out of the answer
+unless the command failed.
+
+Give foreground calls a generous timeout: a real DSH turn can run for many minutes. Use
+`--background` for anything you expect to be long, then report the job id.
+
+## Workflow
+
+1. Decide whether this continues earlier DSH work. If the user did not say, run exactly one
+   discovery call:
+
+   ```sh
+   node "$DSH_COMPANION" task-resume-candidate --json
+   ```
+
+2. If that reports `"available": true`, ask the user **exactly once**: "Continue the DSH session from
+   job <id>, or start a new one?" Then act on the answer.
+   If it reports `false`, start a new session without asking.
+   Never invent a session, and never carry context over by pasting a summary of the old
+   conversation — only `--resume` restores the previous DSH context.
+
+3. Run the task:
+
+   ```sh
+   # new session
+   node "$DSH_COMPANION" task --wait "<the task>"
+   # continue the previous session
+   node "$DSH_COMPANION" task --resume --wait "<follow-up>"
+   # long-running work: return immediately with a job id
+   node "$DSH_COMPANION" task --background "<the task>"
+   ```
+
+## Choosing a model
+
+Model routes belong to the user's DSH install, not to this plugin, so never guess a provider and
+never invent a model id. When the user names a model, or asks which ones exist, read the real
+catalog first:
+
+```sh
+node "$DSH_COMPANION" models --json
+```
+
+Then pass `--model <id>`; the plugin resolves the provider from that catalog. Add `--provider <id>`
+only when the same model id is offered by more than one provider. Leaving `--model` off keeps
+whatever the user's DSH is configured to use — prefer that unless they asked for a specific model.
+
+Two things to pass on if the user cares: reading the catalog requires a DSH session and ACP cannot
+delete sessions, so `models` leaves one empty session behind and prints its id; and a rejected
+`--model` already prints the whole catalog grouped by provider, so you do not need a second call to
+explain a failure.
+
+## Flags
+
+| Flag | Meaning |
+|---|---|
+| `--wait` | Run in the foreground and print DSH's final answer (default). |
+| `--background` | Queue the job, print its id, and return at once. |
+| `--resume`, `--resume-last` | Continue the newest resumable DSH session in this workspace. Fails rather than starting a new session when there is nothing to resume. |
+| `--fresh` | Force a new session. |
+| `--write` | Tell DSH it may modify files. **Without it DSH is asked not to write**, but the plugin does not enforce that (see the plugin README); say so if the user asks for a guarantee. |
+| `--model <id\|flash\|pro>` | `flash` and `pro` are aliases; any other value is a literal model id, resolved against the catalog the runtime advertises. Omit it to keep whatever DSH selected. |
+| `--provider <id>` | Disambiguates a model id that several providers offer. Run `models` to see the real catalog before guessing. |
+| `--effort <off\|low\|high\|max>` | Reasoning effort for this turn. |
+| `--prompt-file <path>` | Read the task from a file. |
+| `--cwd <dir>` | Run against another workspace. |
+| `--json` | Emit the structured payload instead of text. |
+
+The exit code is 0 only when DSH ended the turn normally; anything else is a failure, and the reason
+is on stderr.
+
+## Reporting
+
+Return stdout unchanged. When the user wants the result later, use the `dsh-jobs` skill instead of
+holding the turn open.
