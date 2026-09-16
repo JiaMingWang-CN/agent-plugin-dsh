@@ -314,6 +314,20 @@ test("--resume fails before creating a job when there is nothing to resume", () 
   assert.equal(JSON.parse(status.stdout).running.length, 0);
 });
 
+test("--resume-last without a prompt still sends a continuation prompt", () => {
+  const sandbox = makeSandbox("resume-continue");
+  assert.equal(sandbox.run(["task", "--wait", "remember the marker"]).status, 0, "seed a resumable session");
+
+  const result = sandbox.run(["task", "--resume-last", "--wait", "--json"]);
+  assert.equal(result.status, 0, result.stderr);
+  const payload = JSON.parse(result.stdout);
+  assertStableJsonKeys(payload);
+  assert.equal(payload.status, "completed");
+  // The fake runtime echoes the prompt it received, so the answer proves a
+  // continuation prompt was sent rather than an empty user message.
+  assert.match(payload.finalResponse, /Continue the previous task/);
+});
+
 test("cancel terminates the runtime tree, including its children", async () => {
   const sandbox = makeSandbox("cancel");
   const childPidFile = path.join(makeTempDir("cancel-pid-"), "child.pid");
@@ -548,6 +562,74 @@ test("transfer sends the named transcript and reports the new session", () => {
   const rendered = JSON.parse(stored.stdout).storedJob.result.rendered;
   assert.match(rendered, /please fix the bug/);
   assert.match(rendered, /which bug\?/);
+});
+
+test("transfer --json reports the stable keys of a successful hand-over", () => {
+  const sandbox = makeSandbox("transfer-keys");
+  const transcript = path.join(sandbox.workspace, "rollout.jsonl");
+  fs.writeFileSync(
+    transcript,
+    JSON.stringify({ type: "session_meta", session_id: "s1", cwd: sandbox.workspace }) +
+      "\n" +
+      JSON.stringify({ role: "user", content: "please fix the bug" }) +
+      "\n",
+    "utf8"
+  );
+
+  const result = sandbox.run(["transfer", "--source", transcript, "--json"]);
+  assert.equal(result.status, 0, result.stderr);
+  const payload = JSON.parse(result.stdout);
+  assertStableJsonKeys(payload);
+  assert.equal(payload.status, "completed");
+  assert.equal(payload.exitStatus, 0);
+  assert.equal(payload.stopReason, "end_turn");
+  assert.match(payload.finalResponse, /please fix the bug/);
+});
+
+test("transfer rejects a transcript that does not start with session metadata", () => {
+  const sandbox = makeSandbox("transfer-nometa");
+  const transcript = path.join(sandbox.workspace, "rollout.jsonl");
+  fs.writeFileSync(
+    transcript,
+    JSON.stringify({ role: "user", content: "I am not session metadata" }) + "\n",
+    "utf8"
+  );
+
+  const result = sandbox.run(["transfer", "--source", transcript, "--json"]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /does not start with Codex session metadata/);
+});
+
+test("a missing prompt file reports the path, not a raw ENOENT", () => {
+  const sandbox = makeSandbox("prompt-file");
+  const result = sandbox.run(["task", "--prompt-file", "no-such.md", "--json"]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Cannot read the prompt file/);
+  assert.match(result.stderr, /no-such\.md/);
+});
+
+test("transfer truncation does not split a multi-byte character", () => {
+  const sandbox = makeSandbox("transfer-utf8");
+  const transcript = path.join(sandbox.workspace, "rollout.jsonl");
+  // Each CJK character is 3 bytes in UTF-8, so any byte budget lands mid-character.
+  const longText = "总结".repeat(40000);
+  fs.writeFileSync(
+    transcript,
+    JSON.stringify({ type: "session_meta", session_id: "s1", cwd: sandbox.workspace }) +
+      "\n" +
+      JSON.stringify({ role: "user", content: longText }) +
+      "\n",
+    "utf8"
+  );
+
+  const result = sandbox.run(["transfer", "--source", transcript, "--json"]);
+  assert.equal(result.status, 0, result.stderr);
+  const payload = JSON.parse(result.stdout);
+  assert.equal(payload.truncated, true);
+  // A cleanly truncated buffer still round-trips through JSON; a split
+  // continuation byte would have surfaced as U+FFFD in the echoed reply.
+  assert.ok(payload.finalResponse.includes("总"));
+  assert.ok(!payload.finalResponse.includes("\uFFFD"), "truncation split a multi-byte character");
 });
 
 test("transfer rejects a compressed transcript with a clear message", () => {

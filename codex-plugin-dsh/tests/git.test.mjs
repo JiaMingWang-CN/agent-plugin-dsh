@@ -68,6 +68,11 @@ describe("lib/git.mjs", { skip: gitAvailable ? false : "git is not on PATH" }, (
     });
   });
 
+  it("an unsupported scope throws even when --base is given", () => {
+    const dir = tempRepo();
+    assert.throws(() => resolveReviewTarget(dir, { scope: "everything", base: "main" }), /Unsupported review scope "everything"/);
+  });
+
   it("an unsupported scope throws", () => {
     const dir = tempRepo();
     assert.throws(() => resolveReviewTarget(dir, { scope: "everything" }), /Unsupported review scope "everything"/);

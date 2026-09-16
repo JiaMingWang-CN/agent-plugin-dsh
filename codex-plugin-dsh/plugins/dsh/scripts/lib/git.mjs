@@ -139,6 +139,11 @@ export function resolveReviewTarget(cwd, options = {}) {
   const baseRef = options.base ?? null;
   const state = getWorkingTreeState(cwd);
   const supportedScopes = new Set(["auto", "working-tree", "branch"]);
+  if (!supportedScopes.has(requestedScope)) {
+    throw new Error(
+      `Unsupported review scope "${requestedScope}". Use one of: auto, working-tree, branch, or pass --base <ref>.`
+    );
+  }
 
   if (baseRef) {
     return {
@@ -155,12 +160,6 @@ export function resolveReviewTarget(cwd, options = {}) {
       label: "working tree diff",
       explicit: true
     };
-  }
-
-  if (!supportedScopes.has(requestedScope)) {
-    throw new Error(
-      `Unsupported review scope "${requestedScope}". Use one of: auto, working-tree, branch, or pass --base <ref>.`
-    );
   }
 
   if (requestedScope === "branch") {

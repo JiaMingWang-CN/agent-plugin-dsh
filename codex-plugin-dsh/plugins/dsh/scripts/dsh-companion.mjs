@@ -492,7 +492,12 @@ async function enqueueBackgroundJob(cwd, job, request) {
 
 function readTaskPrompt(cwd, options, positionals) {
   if (options["prompt-file"]) {
-    return fs.readFileSync(path.resolve(cwd, String(options["prompt-file"])), "utf8");
+    const promptPath = path.resolve(cwd, String(options["prompt-file"]));
+    try {
+      return fs.readFileSync(promptPath, "utf8");
+    } catch (error) {
+      throw new Error("Cannot read the prompt file " + promptPath + ": " + error.message);
+    }
   }
   const positional = positionals.join(" ").trim();
   return positional || readStdinIfPiped().trim();
@@ -526,6 +531,9 @@ async function handleTask(argv) {
   const workspaceRoot = resolveCommandWorkspace(options);
   const prompt = readTaskPrompt(cwd, options, positionals);
   const resumeRequested = Boolean(options["resume-last"] || options.resume);
+  // --resume-last continues the previous session even with no follow-up, so the
+  // default continuation prompt is sent rather than an empty user message.
+  const effectivePrompt = resumeRequested && !prompt ? DEFAULT_CONTINUE_PROMPT : prompt;
 
   if (resumeRequested && options.fresh) {
     throw new Error("Choose either --resume/--resume-last or --fresh.");
@@ -551,11 +559,11 @@ async function handleTask(argv) {
     kind: "task",
     title: resumeRequested ? "DSH Resume" : "DSH Task",
     workspaceRoot: workspaceRoot,
-    summary: shorten(prompt || DEFAULT_CONTINUE_PROMPT),
+    summary: shorten(effectivePrompt),
     dshHome: resolveDshHome(),
     dshProfile: dshProfile
   });
-  const request = buildTaskRequest({ cwd: cwd, workspaceRoot: workspaceRoot, jobId: job.id, options: options, prompt: prompt });
+  const request = buildTaskRequest({ cwd: cwd, workspaceRoot: workspaceRoot, jobId: job.id, options: options, prompt: effectivePrompt });
   request.resumeSessionId = resumeSessionId;
   request.title = job.title;
   request.summary = job.summary;
@@ -1024,7 +1032,7 @@ function extractRolloutText(sourcePath) {
       turns.push(role.toUpperCase() + ": " + body.trim());
     }
   }
-  if (meta === null || (meta.type !== "session_meta" && meta.type !== undefined && !meta.session_id && !meta.sessionId)) {
+  if (meta === null || (meta.type !== "session_meta" && !meta.session_id && !meta.sessionId)) {
     throw new Error("The transcript does not start with Codex session metadata: " + sourcePath);
   }
   return { meta: meta, transcript: turns.join("\n\n") };
@@ -1047,7 +1055,17 @@ async function handleTransfer(argv) {
   const budget = MAX_TRANSFER_PROMPT_BYTES;
   const encoded = Buffer.from(transcript, "utf8");
   const truncated = encoded.length > budget;
-  const body = truncated ? encoded.subarray(encoded.length - budget).toString("utf8") : transcript;
+  let body = transcript;
+  if (truncated) {
+    const tail = encoded.subarray(encoded.length - budget);
+    // A byte budget can split a multi-byte UTF-8 sequence at the leading
+    // edge; drop the leading continuation bytes so the body decodes cleanly.
+    let start = 0;
+    while (start < tail.length && (tail[start] & 0xc0) === 0x80) {
+      start += 1;
+    }
+    body = tail.subarray(start).toString("utf8");
+  }
   const sourceCwd = meta.cwd || meta.payload?.cwd || null;
   const prompt = [
     "The following Codex conversation is being handed over to you. Continue the work from here.",
@@ -1097,8 +1115,11 @@ async function handleTransfer(argv) {
   );
 
   if (options.json) {
+    // execution.payload already carries the stable keys (status, stopReason,
+    // exitStatus, finalResponse); adding the transfer-specific ones keeps the
+    // documented contract that every --json response shares them.
     outputResult(
-      { jobId: job.id, sessionId: execution.sessionId, sourcePath: sourcePath, truncated: truncated, stopReason: execution.stopReason },
+      { ...execution.payload, jobId: job.id, sourcePath: sourcePath, truncated: truncated },
       true
     );
   } else {
