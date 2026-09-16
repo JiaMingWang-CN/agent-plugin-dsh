@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1
+
+- Analysis layer: `task --analyze` runs a read-only research pass (selectable with
+  `--analyze-model` / `--analyze-provider` / `--analyze-effort`, defaulting to `pro`) that answers
+  with a fixed-section task brief, then a fresh execution session carries the brief out. The research
+  pass is always read-only, an empty or failed brief fails the job before execution, and `--analyze`
+  is mutually exclusive with `--resume`. See `docs/phase-4-analysis-layer.md`.
+
 ## 0.1.0
 
 - Initial release.

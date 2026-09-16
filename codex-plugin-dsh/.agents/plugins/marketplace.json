@@ -10,7 +10,7 @@
       "policy": {
         "installation": "AVAILABLE"
       },
-      "version": "0.1.0",
+      "version": "0.1.1",
       "description": "Delegate tasks and code review from Codex to DeepSeek Harness (DSH)."
     }
   ]
