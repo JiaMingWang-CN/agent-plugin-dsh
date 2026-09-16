@@ -100,11 +100,16 @@ done; an empty list or an error means the problem is on the DSH side — fix it 
 tooling and come back.
 
 > **About "strength"**: the protocol has a single **session-level** reasoning-effort knob
-> (`off / low / high / max`); there is no per-model set of tiers — which values the knob offers
+> (`off / low / high / max` on a DeepSeek route; a gateway route reached through pi-ai may
+> advertise only `low / medium / high` — **the plugin carries no vocabulary of its own**);
+> there is no per-model set of tiers — which values the knob offers
 > is decided by the currently selected model, so switching models can change the available
 > levels. `models` therefore returns two things: each model's **strength description** (metadata
 > the runtime advertises), and the `reasoning effort` list and current value the current model
-> offers. Pick a level with `--effort`.
+> offers. Pick a level with `--effort`: the value passes straight to the runtime, which checks it
+> against the model this turn actually selected — a rejection lists *that* model's levels — and
+> every turn prints one line, `Reasoning effort: <in effect> (offered by this model: ...)`, so a
+> model switch silently re-defaulting the level is visible in the log.
 
 ## 5. Environment variables
 
@@ -172,8 +177,8 @@ node plugins/dsh/scripts/dsh-companion.mjs setup [--json]
 node plugins/dsh/scripts/dsh-companion.mjs models [--cwd <d>] [--dsh-profile <p>] [--json]
 
 node plugins/dsh/scripts/dsh-companion.mjs task [--wait|--background] [--resume|--resume-last|--fresh] \
-     [--write] [--model <id|flash|pro>] [--provider <id>] [--effort <off|low|high|max>] \
-     [--analyze] [--analyze-model <id|flash|pro>] [--analyze-provider <id>] [--analyze-effort <off|low|high|max>] \
+     [--write] [--model <id|flash|pro>] [--provider <id>] [--effort <level>] \
+     [--analyze] [--analyze-model <id|flash|pro>] [--analyze-provider <id>] [--analyze-effort <level>] \
      [--prompt-file <p>] [--dsh-profile <p>] [--cwd <d>] [--json] [prompt ...]
 
 node plugins/dsh/scripts/dsh-companion.mjs review [--adversarial] [--wait|--background] [--base <ref>] \

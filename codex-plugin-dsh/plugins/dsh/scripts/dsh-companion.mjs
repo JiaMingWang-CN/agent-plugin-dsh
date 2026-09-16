@@ -46,7 +46,6 @@ import {
 import {
   MODEL_ALIASES,
   PREFERRED_PROVIDER,
-  VALID_EFFORTS,
   discoverRoutes,
   getDshAvailability,
   getDshCredentialStatus,
@@ -94,12 +93,12 @@ function printUsage() {
       "",
       "  setup [--json]",
       "  task [--background|--wait] [--resume|--resume-last|--fresh] [--write]",
-      "       [--model <id|flash|pro>] [--provider <id>] [--effort <" + VALID_EFFORTS.join("|") + ">]",
+      "       [--model <id|flash|pro>] [--provider <id>] [--effort <level>]",
       "       [--analyze] [--analyze-model <id|flash|pro>] [--analyze-provider <id>]",
-      "       [--analyze-effort <" + VALID_EFFORTS.join("|") + ">]",
+      "       [--analyze-effort <level>]",
       "       [--prompt-file <path>] [--dsh-profile <name>] [--cwd <dir>] [--json] [prompt...]",
       "  review [--adversarial] [--background|--wait] [--base <ref>] [--scope auto|working-tree|branch]",
-      "         [--model <id>] [--provider <id>] [--effort <" + VALID_EFFORTS.join("|") + ">] [--cwd <dir>] [--json] [focus...]",
+      "         [--model <id>] [--provider <id>] [--effort <level>] [--cwd <dir>] [--json] [focus...]",
       "  status [job-id] [--all] [--wait] [--timeout-ms N] [--poll-interval-ms N] [--cwd <dir>] [--json]",
       "  result [job-id] [--cwd <dir>] [--json]",
       "  cancel [job-id] [--cwd <dir>] [--json]",
@@ -107,6 +106,8 @@ function printUsage() {
       "  task-resume-candidate [--cwd <dir>] [--json]",
       "  transfer --source <codex-rollout.jsonl> [--cwd <dir>] [--json]",
       "  task-worker --cwd <dir> --job-id <id>",
+      "",
+      "Effort levels are whatever the selected route advertises (`models` prints them).",
       ""
     ].join("\n")
   );

@@ -110,10 +110,10 @@ explain a failure.
 | `--analyze` | Run a read-only research pass first, then execute the brief it produces. Two DSH turns, two sessions. Cannot be combined with `--resume`. |
 | `--analyze-model <id\|flash\|pro>` | Model for the research pass only. Defaults to `pro`, independent of `--model`. |
 | `--analyze-provider <id>` | Disambiguates the analysis model the same way `--provider` disambiguates `--model`. |
-| `--analyze-effort <off|low|high|max>` | Reasoning effort for the research pass only. |
+| `--analyze-effort <level>` | Reasoning effort for the research pass only. Which levels exist is the route's business, not this plugin's. |
 | `--model <id\|flash\|pro>` | `flash` and `pro` are aliases; any other value is a literal model id, resolved against the catalog the runtime advertises. Omit it to keep whatever DSH selected. |
 | `--provider <id>` | Disambiguates a model id that several providers offer. Run `models` to see the real catalog before guessing. |
-| `--effort <off\|low\|high\|max>` | Reasoning effort for this turn. |
+| `--effort <level>` | Reasoning effort for this turn. The selected route decides which levels exist — `models` prints them, and each turn reports the one in effect. |
 | `--prompt-file <path>` | Read the task from a file. |
 | `--cwd <dir>` | Run against another workspace. |
 | `--json` | Emit the structured payload instead of text. |

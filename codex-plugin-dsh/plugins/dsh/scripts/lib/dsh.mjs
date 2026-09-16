@@ -27,8 +27,6 @@ export const DEFAULT_PROFILE = "acp";
  * route is therefore read from what the runtime advertises for the session.
  */
 export const PREFERRED_PROVIDER = "deepseek-official";
-/** Reasoning efforts the runtime advertises, in ascending order. */
-export const VALID_EFFORTS = ["off", "low", "high", "max"];
 export const MODEL_ALIASES = new Map([
   ["flash", "deepseek-v4-flash"],
   ["pro", "deepseek-v4-pro"]
@@ -82,16 +80,21 @@ export function normalizeProvider(provider, env = process.env) {
 }
 
 /**
- * Validate a requested reasoning effort.
+ * Normalize a requested reasoning effort without judging it.
+ *
+ * Which efforts exist is a property of the selected model, not of this plugin: a
+ * DeepSeek route advertises off/low/high/max while a gateway route reached through
+ * another adapter may advertise low/medium/high instead. Any local list would
+ * therefore reject values the runtime accepts and accept values it refuses, so the
+ * value passes through untouched and applyRoute checks it against what the session
+ * actually advertises for the route this turn runs on.
+ *
  * @returns the effort, or null when the caller did not choose one.
  */
 export function normalizeReasoningEffort(effort, env = process.env) {
   const requested = String(effort || env.DSH_CODEX_EFFORT || "").trim();
   if (!requested || requested === "default") {
     return null;
-  }
-  if (!VALID_EFFORTS.includes(requested)) {
-    throw new Error('Unsupported reasoning effort "' + requested + '". Use one of: ' + VALID_EFFORTS.join(", ") + ".");
   }
   return requested;
 }
@@ -638,16 +641,20 @@ export async function runDshTurn(options) {
       phase: "starting"
     });
 
+    let applied = null;
     if (sessionId) {
       const resumed = await runtime.resumeSession(sessionId, cwd);
       progress({ message: "Resumed DSH session " + sessionId + ".", phase: "running", sessionId: sessionId });
-      await applyRoute(runtime, sessionId, route, resumed && resumed.configOptions);
+      applied = await applyRoute(runtime, sessionId, route, resumed && resumed.configOptions);
     } else {
       const created = await runtime.newSession(cwd);
       sessionId = created.sessionId;
       progress({ message: "Started DSH session " + sessionId + ".", phase: "running", sessionId: sessionId });
-      await applyRoute(runtime, sessionId, route, created.configOptions);
+      applied = await applyRoute(runtime, sessionId, route, created.configOptions);
     }
+    // Say what the turn runs with: an unrequested effort keeps the session's own
+    // value, and a switched model silently re-defaults it.
+    progress({ message: effortProgressMessage(applied), phase: "running", sessionId: sessionId });
     if (options.onSession) {
       options.onSession({ sessionId: sessionId, resumed: Boolean(options.sessionId) });
     }
@@ -797,34 +804,65 @@ export function resolveModelRoute(configOptions, requested) {
   );
 }
 
-/** Apply the requested route to the session through its advertised configuration options. */
+/**
+ * Apply the requested route to the session through its advertised configuration options.
+ *
+ * @returns the effort in effect after this call and the set the route offers, so a
+ * caller can report what the turn actually runs with.
+ */
 async function applyRoute(runtime, sessionId, requested, configOptions) {
-  const options = Array.isArray(configOptions) ? configOptions : [];
-  const wantedModel = resolveModelRoute(configOptions, requested);
+  let options = Array.isArray(configOptions) ? configOptions : [];
+  const wantedModel = resolveModelRoute(options, requested);
   if (wantedModel !== null) {
     const modelOption = options.find((option) => option.id === "model");
     if (!modelOption) {
       throw new Error("This dsh profile advertises no model option, so --model cannot be honored.");
     }
     if (modelOption.currentValue !== wantedModel) {
-      await runtime.setConfigOption(sessionId, "model", wantedModel);
+      const applied = await runtime.setConfigOption(sessionId, "model", wantedModel);
+      // A model switch answers with the whole option state recomputed for the new
+      // model, and its reasoning set is not the old model's. Keeping the newer one
+      // is what makes --model and --effort agree about the route they share.
+      if (applied && Array.isArray(applied.configOptions)) {
+        options = applied.configOptions;
+      }
     }
   }
 
-  if (requested.effort === null) {
-    return;
-  }
   const effortOption = options.find((option) => option.id === "reasoning_effort");
   if (!effortOption) {
-    throw new Error("This dsh profile advertises no reasoning_effort option, so --effort cannot be honored.");
+    if (requested.effort !== null) {
+      throw new Error("This dsh profile advertises no reasoning_effort option, so --effort cannot be honored.");
+    }
+    return { effort: null, offered: [], source: "none" };
   }
-  const available = flattenOptionValues(effortOption).map((entry) => entry.value);
-  if (!available.includes(requested.effort)) {
-    throw new Error('Reasoning effort "' + requested.effort + '" is not offered. Available: ' + available.join(", ") + ".");
+
+  const entries = flattenOptionValues(effortOption);
+  // The empty value is the provider's own default, not a level a caller can name.
+  const offered = entries.filter((entry) => entry.value !== "").map((entry) => entry.value);
+  if (requested.effort === null) {
+    const current = effortOption.currentValue === "" || effortOption.currentValue === undefined
+      ? null
+      : String(effortOption.currentValue);
+    return { effort: current, offered: offered, source: "session" };
+  }
+  if (!entries.some((entry) => entry.value === requested.effort)) {
+    throw new Error('Reasoning effort "' + requested.effort + '" is not offered. Available: ' + offered.join(", ") + ".");
   }
   if (effortOption.currentValue !== requested.effort) {
     await runtime.setConfigOption(sessionId, "reasoning_effort", requested.effort);
   }
+  return { effort: requested.effort, offered: offered, source: "requested" };
+}
+
+/** One line naming the effort this turn runs with and the set the route offers. */
+function effortProgressMessage(applied) {
+  if (applied.source === "none") {
+    return "Reasoning effort: this route advertises none.";
+  }
+  const inEffect = applied.effort === null ? "the provider's own default" : applied.effort;
+  const offered = applied.offered.length > 0 ? applied.offered.join(", ") : "none";
+  return "Reasoning effort: " + inEffect + " (offered by this model: " + offered + ").";
 }
 
 function flattenOptionValues(option) {

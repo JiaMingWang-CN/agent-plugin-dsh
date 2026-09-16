@@ -216,6 +216,48 @@ test("an unsupported model fails before any session is created", () => {
   assert.ok(!fs.existsSync(logFile) || !fs.readFileSync(logFile, "utf8").includes("session/prompt"));
 });
 
+test("an effort only the selected model offers is accepted", () => {
+  const sandbox = makeSandbox("task-effort-switch");
+  const logFile = path.join(sandbox.workspace, "..", "effort-switch-" + Date.now() + ".log");
+  const result = sandbox.run(["task", "--wait", "--model", "glm-5.3", "--effort", "medium", "go"], {
+    env: { FAKE_ACP_LOG: logFile }
+  });
+  assert.equal(result.status, 0, result.stderr);
+  // The session's own route advertises off/low/high/max; only the volcengine model
+  // the switch selected advertises medium. Passing proves the vocabulary belongs to
+  // the route rather than to a list this plugin carries.
+  const methods = fs.readFileSync(logFile, "utf8").split("\n").filter(Boolean);
+  assert.equal(methods.filter((entry) => entry === "session/set_config_option").length, 2);
+});
+
+test("an effort the selected model does not offer fails with that model's own list", () => {
+  const sandbox = makeSandbox("task-effort-unoffered");
+  const logFile = path.join(sandbox.workspace, "..", "effort-unoffered-" + Date.now() + ".log");
+  const result = sandbox.run(["task", "--wait", "--model", "glm-5.3", "--effort", "max", "go"], {
+    env: { FAKE_ACP_LOG: logFile }
+  });
+  assert.equal(result.status, 1);
+  // The pre-switch route accepts max, so this list can only come from the model the
+  // turn actually runs on.
+  assert.match(result.stderr, /is not offered\. Available: low, medium, high/);
+  assert.ok(!fs.existsSync(logFile) || !fs.readFileSync(logFile, "utf8").includes("session/prompt"));
+});
+
+test("each turn reports the effort in effect and the set the route offers", () => {
+  const sandbox = makeSandbox("task-effort-report");
+  const inherited = sandbox.run(["task", "--wait", "go"]);
+  assert.equal(inherited.status, 0, inherited.stderr);
+  assert.match(
+    inherited.stderr,
+    /Reasoning effort: high \(offered by this model: off, low, high, max\)/,
+    "a turn that requests no effort still says which one it runs with"
+  );
+
+  const requested = sandbox.run(["task", "--wait", "--effort", "low", "go"]);
+  assert.equal(requested.status, 0, requested.stderr);
+  assert.match(requested.stderr, /Reasoning effort: low \(offered by this model: off, low, high, max\)/);
+});
+
 test("background task: status --wait then result returns the stored output", async () => {
   const sandbox = makeSandbox("bg");
   const started = sandbox.run(["task", "--background", "--json", "background work"], {

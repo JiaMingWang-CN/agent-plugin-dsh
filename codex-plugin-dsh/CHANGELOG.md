@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- Reasoning effort is no longer checked against a list this plugin carries. Which levels exist is a
+  property of the selected model — a DeepSeek route advertises `off/low/high/max`, while a gateway
+  route reached through pi-ai may advertise only `low/medium/high` — so the built-in whitelist both
+  rejected levels the runtime accepts and accepted levels it refuses. The requested value now passes
+  through and the runtime validates it against the route the turn actually runs on.
+- Fixed: `--model` combined with `--effort` validated the effort against the *previous* model's
+  advertised levels. A model switch answers with the whole option state recomputed for the new model,
+  and that stale copy was being read; the switch response is now the source. `--model <gateway model>
+  --effort medium` therefore works, and a rejection lists the levels of the model that was selected.
+- Each turn now reports the effort it runs with and the set the route offers
+  (`Reasoning effort: <in effect> (offered by this model: ...)`), so a turn that requests no effort
+  still says which one it inherited and a model switch silently re-defaulting the level is visible.
+
 ## 0.1.2
 
 - `models` now returns the per-model strength description the runtime advertises (for example

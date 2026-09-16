@@ -90,10 +90,13 @@ node plugins/dsh/scripts/dsh-companion.mjs models
 强度说明（快而省 vs 更强的推理能力等），帮你按任务选型。列表里有你想用的模型，配置就到位了；
 列表是空的或报错，说明问题在 DSH 那一侧，用 DSH 自己的方式修好再回来。
 
-> **关于"强度"**：协议层只有一个**会话级**的思考强度旋钮（`off / low / high / max`），
+> **关于"强度"**：协议层只有一个**会话级**的思考强度旋钮（DeepSeek 官方路由公布 `off / low / high / max`，
+> 经 pi-ai 接入的网关可能只公布 `low / medium / high`；**插件不预设词表**），
 > 不存在"每个模型各自的强度档位"——它由当前选中的模型决定有哪几档，换模型可能换掉可选档位。
 > 所以 `models` 返回的是两样东西：每个模型的**强度描述**（运行时公布的元数据），
-> 以及当前模型公布的那组 `reasoning effort` 值与当前选中值。选档位用 `--effort`。
+> 以及当前模型公布的那组 `reasoning effort` 值与当前选中值。选档位用 `--effort`：值原样交给运行时，
+> 由它按这一轮实际选中的模型校验（校验失败时列出的是**那个模型**的可选值）；每轮开始时会打印一行
+> `Reasoning effort: <生效值> (offered by this model: ...)`，换模型导致强度回落到默认档也看得到。
 
 ## 五、环境变量参考
 
@@ -154,8 +157,8 @@ node plugins/dsh/scripts/dsh-companion.mjs setup [--json]
 node plugins/dsh/scripts/dsh-companion.mjs models [--cwd <d>] [--dsh-profile <p>] [--json]
 
 node plugins/dsh/scripts/dsh-companion.mjs task [--wait|--background] [--resume|--resume-last|--fresh] \
-     [--write] [--model <id|flash|pro>] [--provider <id>] [--effort <off|low|high|max>] \
-     [--analyze] [--analyze-model <id|flash|pro>] [--analyze-provider <id>] [--analyze-effort <off|low|high|max>] \
+     [--write] [--model <id|flash|pro>] [--provider <id>] [--effort <level>] \
+     [--analyze] [--analyze-model <id|flash|pro>] [--analyze-provider <id>] [--analyze-effort <level>] \
      [--prompt-file <p>] [--dsh-profile <p>] [--cwd <d>] [--json] [prompt ...]
 
 node plugins/dsh/scripts/dsh-companion.mjs review [--adversarial] [--wait|--background] [--base <ref>] \

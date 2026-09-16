@@ -71,6 +71,28 @@ function notify(method, params) {
   write({ jsonrpc: "2.0", method: method, params: params });
 }
 
+/**
+ * The efforts one route advertises, mirroring the real asymmetry: a DeepSeek route
+ * exposes off/low/high/max, while a gateway route reached through another adapter
+ * exposes low/medium/high. A test that switches providers can therefore prove the
+ * companion validates `--effort` against the route it actually selected.
+ */
+function effortsFor(provider) {
+  if (provider === "volcengine") {
+    return [
+      { value: "low", name: "Low" },
+      { value: "medium", name: "Medium" },
+      { value: "high", name: "High" }
+    ];
+  }
+  return [
+    { value: "off", name: "Off" },
+    { value: "low", name: "Low" },
+    { value: "high", name: "High" },
+    { value: "max", name: "Max" }
+  ];
+}
+
 function configOptions(state) {
   return [
     {
@@ -119,12 +141,7 @@ function configOptions(state) {
       category: "thought_level",
       type: "select",
       currentValue: state.effort,
-      options: [
-        { value: "off", name: "Off" },
-        { value: "low", name: "Low" },
-        { value: "high", name: "High" },
-        { value: "max", name: "Max" }
-      ]
+      options: effortsFor(state.provider)
     }
   ];
 }
