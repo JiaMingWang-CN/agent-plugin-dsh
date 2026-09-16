@@ -50,6 +50,35 @@ Give foreground calls a generous timeout: a real DSH turn can run for many minut
    node "$DSH_COMPANION" task --background "<the task>"
    ```
 
+## When to use the analysis layer (`--analyze`)
+
+Some tasks need the lay of the land before anyone touches the code. If you catch yourself writing a
+long step-by-step description of how the work should be done, stop: that prescription is exactly what
+makes the executor stop thinking. Hand over the intent instead and let the analysis layer research it:
+
+```sh
+node "$DSH_COMPANION" task --analyze --wait "make the login flow survive a expired session"
+```
+
+`--analyze` runs **two** DSH turns: a read-only research pass that answers with a task brief (goal,
+scope, the files the executor must read, constraints, a checkable definition of done, risks), then a
+fresh execution session that carries the brief out. The brief becomes part of the requirement the
+executor must satisfy, so "do the work and verify it" is checked rather than hoped for.
+
+Use it when the task touches code you have not read yet, when the request is fuzzy, or when the cost
+of a wrong first move is high. Skip it for small, well-understood changes — it costs a second DSH
+turn and leaves a second DSH session behind.
+
+The research pass is always read-only, even with `--write`. Its model defaults to `pro` (the stronger
+research model) and is chosen independently of the execution model:
+
+```sh
+node "$DSH_COMPANION" task --analyze --analyze-model pro --model flash --write "..."
+```
+
+If the analysis pass fails or produces an empty brief, the job fails and nothing is executed; the
+reason is on stderr.
+
 ## Choosing a model
 
 Model routes belong to the user's DSH install, not to this plugin, so never guess a provider and
@@ -78,6 +107,10 @@ explain a failure.
 | `--resume`, `--resume-last` | Continue the newest resumable DSH session in this workspace. Fails rather than starting a new session when there is nothing to resume. |
 | `--fresh` | Force a new session. |
 | `--write` | Tell DSH it may modify files. **Without it DSH is asked not to write**, but the plugin does not enforce that (see the plugin README); say so if the user asks for a guarantee. |
+| `--analyze` | Run a read-only research pass first, then execute the brief it produces. Two DSH turns, two sessions. Cannot be combined with `--resume`. |
+| `--analyze-model <id\|flash\|pro>` | Model for the research pass only. Defaults to `pro`, independent of `--model`. |
+| `--analyze-provider <id>` | Disambiguates the analysis model the same way `--provider` disambiguates `--model`. |
+| `--analyze-effort <off|low|high|max>` | Reasoning effort for the research pass only. |
 | `--model <id\|flash\|pro>` | `flash` and `pro` are aliases; any other value is a literal model id, resolved against the catalog the runtime advertises. Omit it to keep whatever DSH selected. |
 | `--provider <id>` | Disambiguates a model id that several providers offer. Run `models` to see the real catalog before guessing. |
 | `--effort <off\|low\|high\|max>` | Reasoning effort for this turn. |

@@ -161,6 +161,9 @@ export function renderStoredJobResult(job, storedJob) {
   if (storedJob?.sessionId ?? job.sessionId) {
     lines.push(`DSH session: ${storedJob?.sessionId ?? job.sessionId}`);
   }
+  if (storedJob?.result?.analysisSessionId) {
+    lines.push("analysis session: " + storedJob.result.analysisSessionId);
+  }
   if (storedJob?.stopReason ?? job.stopReason) {
     lines.push(`stop reason: ${storedJob?.stopReason ?? job.stopReason}`);
   }

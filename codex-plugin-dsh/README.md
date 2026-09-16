@@ -44,7 +44,7 @@ node plugins/dsh/scripts/dsh-companion.mjs models [--cwd <d>] [--dsh-profile <p>
 
 node plugins/dsh/scripts/dsh-companion.mjs task [--wait|--background] [--resume|--resume-last|--fresh] \
      [--write] [--model <id|flash|pro>] [--provider <id>] [--effort <off|low|high|max>] \
-     [--prompt-file <p>] [--dsh-profile <p>] [--cwd <d>] [--json] [prompt ...]
+     [--analyze] [--analyze-model <id|flash|pro>] [--analyze-provider <id>]      [--analyze-effort <off|low|high|max>]      [--prompt-file <p>] [--dsh-profile <p>] [--cwd <d>] [--json] [prompt ...]
 
 node plugins/dsh/scripts/dsh-companion.mjs review [--adversarial] [--wait|--background] [--base <ref>] \
      [--scope auto|working-tree|branch] [--model <m>] [--provider <p>] [--effort <e>] [--cwd <d>] [--json] [focus ...]
@@ -134,6 +134,35 @@ Resolution rules:
 
 `models` needs a session to read the catalog, and ACP has no session delete, so it creates one empty
 session that stays in your DSH session store. The command prints its id rather than hiding that.
+
+## Analysis layer (optional)
+
+Some tasks should be researched before they are executed. `task --analyze` inserts a **read-only
+research pass** between the request and the execution: a stronger model reads the repository and
+answers with a task brief — goal, scope, the files the executor must read, constraints, a checkable
+definition of done, and risks — and a fresh execution session then carries the brief out.
+
+    node plugins/dsh/scripts/dsh-companion.mjs task --analyze --wait "make the login flow survive an expired session"
+
+Two design points worth knowing:
+
+- **The brief is written to make the executor think, not to script it.** The research prompt forbids
+  writing code or handing down a step-by-step plan: a prescription is what makes a delegated executor
+  stop verifying. Instead it fixes the goal and the checks, and the executor's own preamble makes the
+  brief's "Definition of done" part of the requirement.
+- **The two turns are independent.** Each is its own `dsh` process and its own session, so the
+  research model and the execution model are chosen separately (`--analyze-model` defaults to `pro`,
+  resolved against the same live catalog as `--model`). The job records both sessions; only the
+  execution session is ever offered for `--resume`.
+
+Costs and failure behaviour:
+
+- An analyzed task runs **two** DSH turns and leaves **two** sessions in the store, like running the
+  task twice. The research session's id is reported by `result --json` as `analysisSessionId`.
+- The research pass is always read-only, even with `--write`; only the execution turn may write.
+- If the research pass fails or returns an empty brief, the job fails and nothing is executed. The
+  reason is on stderr, and `--analyze` cannot be combined with `--resume` — the analysis layer
+  always starts a fresh pipeline.
 
 ## Stop review gate (optional)
 

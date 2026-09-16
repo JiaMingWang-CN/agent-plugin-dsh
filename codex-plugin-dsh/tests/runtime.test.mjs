@@ -779,3 +779,95 @@ test("models fails before doing anything when dsh is missing", () => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /dsh is not available/);
 });
+
+// ---------------------------------------------------------------------------
+// analysis layer (--analyze): research pass then execution pass
+// ---------------------------------------------------------------------------
+
+test("--analyze runs a research pass, then executes the brief it produced", () => {
+  const sandbox = makeSandbox("analyze");
+  // The fake echoes its prompt, so the execution answer contains the brief it
+  // was given, and the brief itself is the echoed research prompt.
+  const result = sandbox.run(["task", "--analyze", "--wait", "--json", "fix the login bug"]);
+  assert.equal(result.status, 0, result.stderr);
+  const payload = JSON.parse(result.stdout);
+  assertStableJsonKeys(payload);
+  assert.equal(payload.status, "completed");
+  assert.match(payload.analysisBrief, /^echo:You are the research layer/, "the brief came from the research pass");
+  assert.match(payload.finalResponse, /echo:You are the research layer/, "the executor received the brief");
+  assert.match(payload.sessionId, /^fake-/);
+  assert.ok(payload.analysisSessionId, "the research session is reported");
+  assert.notEqual(payload.analysisSessionId, payload.sessionId, "the two passes use separate sessions");
+});
+
+test("--analyze keeps the research pass read-only even with --write", () => {
+  const sandbox = makeSandbox("analyze-write");
+  const result = sandbox.run(["task", "--analyze", "--write", "--wait", "--json", "change something"]);
+  assert.equal(result.status, 0, result.stderr);
+  const payload = JSON.parse(result.stdout);
+  assert.match(payload.analysisBrief, /Do NOT create, modify, delete, or rename any file/);
+  assert.doesNotMatch(payload.analysisBrief, /You may modify files in the workspace/);
+  assert.match(payload.finalResponse, /You may modify files in the workspace when the task requires it/);
+});
+
+test("an analyzed task fails without executing when the research pass fails", () => {
+  const sandbox = makeSandbox("analyze-fail");
+  const result = sandbox.run(["task", "--analyze", "--wait", "--json", "go"], { env: { FAKE_ACP_FAIL: "1" } });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /turn failed/);
+  const payload = JSON.parse(result.stdout);
+  assert.equal(payload.status, "failed");
+  assert.equal(payload.exitStatus, 1);
+  assert.equal(payload.sessionId, null, "no execution session exists to resume");
+  assert.ok(payload.analysisSessionId, "the research session is still recorded");
+  const store = JSON.parse(fs.readFileSync(sandbox.sessionStore, "utf8"));
+  assert.equal(Object.keys(store.sessions).length, 1, "only the research session was created");
+});
+
+test("an unsupported analysis model fails before the execution turn", () => {
+  const sandbox = makeSandbox("analyze-badmodel");
+  const result = sandbox.run(["task", "--analyze", "--analyze-model", "nope", "--wait", "go"]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /is not offered/);
+  const store = JSON.parse(fs.readFileSync(sandbox.sessionStore, "utf8"));
+  assert.equal(Object.keys(store.sessions).length, 1, "the research session existed, the execution one never did");
+});
+
+test("--analyze cannot be combined with --resume", () => {
+  const sandbox = makeSandbox("analyze-resume");
+  const result = sandbox.run(["task", "--analyze", "--resume", "--wait", "go"]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /fresh pipeline/);
+  assert.ok(!fs.existsSync(sandbox.sessionStore), "no DSH session was created at all");
+});
+
+test("a background analyzed task replays both passes and resumes only the execution session", async () => {
+  const sandbox = makeSandbox("analyze-bg");
+  const started = sandbox.run(["task", "--analyze", "--background", "--json", "investigate and fix"], {
+    env: { FAKE_ACP_REPLY: "ANALYZED-OK" }
+  });
+  assert.equal(started.status, 0, started.stderr);
+  const queued = JSON.parse(started.stdout);
+  assert.equal(queued.status, "queued");
+
+  const waited = sandbox.run(["status", queued.jobId, "--wait", "--timeout-ms", "90000", "--json"]);
+  assert.equal(waited.status, 0, waited.stderr);
+  const snapshot = JSON.parse(waited.stdout);
+  assert.equal(snapshot.job.status, "completed", JSON.stringify(snapshot.job));
+  assert.equal(snapshot.job.result.finalResponse, "ANALYZED-OK");
+  assert.equal(snapshot.job.result.analysisBrief, "ANALYZED-OK", "the brief is stored on the job");
+
+  const result = sandbox.run(["result", queued.jobId, "--json"]);
+  assert.equal(result.status, 0, result.stderr);
+  const payload = JSON.parse(result.stdout);
+  assert.equal(payload.resumable, true);
+  assert.ok(payload.storedJob.result.analysisSessionId);
+  assert.notEqual(payload.storedJob.result.analysisSessionId, payload.sessionId);
+
+  const resumed = sandbox.run(["task", "--resume", "--wait", "what was the brief?"], {
+    env: { FAKE_ACP_REPORT_TURNS: "1" }
+  });
+  assert.equal(resumed.status, 0, resumed.stderr);
+  assert.match(resumed.stdout, /turns=2\b/, "resume continues the execution session, not the research one");
+});
+

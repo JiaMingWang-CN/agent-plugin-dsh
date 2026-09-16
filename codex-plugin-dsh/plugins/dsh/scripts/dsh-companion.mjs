@@ -44,6 +44,7 @@ import {
   shorten
 } from "./lib/render.mjs";
 import {
+  MODEL_ALIASES,
   PREFERRED_PROVIDER,
   VALID_EFFORTS,
   discoverRoutes,
@@ -94,6 +95,8 @@ function printUsage() {
       "  setup [--json]",
       "  task [--background|--wait] [--resume|--resume-last|--fresh] [--write]",
       "       [--model <id|flash|pro>] [--provider <id>] [--effort <" + VALID_EFFORTS.join("|") + ">]",
+      "       [--analyze] [--analyze-model <id|flash|pro>] [--analyze-provider <id>]",
+      "       [--analyze-effort <" + VALID_EFFORTS.join("|") + ">]",
       "       [--prompt-file <path>] [--dsh-profile <name>] [--cwd <dir>] [--json] [prompt...]",
       "  review [--adversarial] [--background|--wait] [--base <ref>] [--scope auto|working-tree|branch]",
       "         [--model <id>] [--provider <id>] [--effort <" + VALID_EFFORTS.join("|") + ">] [--cwd <dir>] [--json] [focus...]",
@@ -212,6 +215,41 @@ function buildDelegatedTaskPrompt({ workspaceRoot, userPrompt, write }) {
       : "Do NOT create, modify, delete, or rename any file. This is a read-only delegation: investigate and report."
   });
   return userPrompt ? preamble.trimEnd() + "\n\n---\n\n" + userPrompt.trim() + "\n" : preamble;
+}
+
+/**
+ * The research-layer prompt: the analysis model investigates and answers with a
+ * fixed-section brief, and the brief is then handed to the executor. The
+ * research pass is read-only regardless of --write, so the write contract is
+ * not interpolated here.
+ */
+function buildAnalysisPrompt({ workspaceRoot, userPrompt }) {
+  const preamble = interpolateTemplate(loadTemplate("analyze"), {
+    WORKSPACE_ROOT: workspaceRoot
+  });
+  return preamble.trimEnd() + "\n\n---\n\n" + String(userPrompt || "").trim() + "\n";
+}
+
+/**
+ * Resolve the analysis pass route. It is independent of the execution route:
+ * flag first, then the ANALYZE-specific env var, then the layer default. An
+ * empty value everywhere means "leave what the runtime selected alone" for
+ * provider/effort, but the model defaults to "pro" because a stronger research
+ * model is the point of the layer.
+ */
+function resolveAnalyzeRoute(options) {
+  const modelRequested = String(options["analyze-model"] || process.env.DSH_CODEX_ANALYZE_MODEL || "").trim();
+  const providerRequested = String(options["analyze-provider"] || process.env.DSH_CODEX_ANALYZE_PROVIDER || "").trim();
+  const effortRequested = String(options["analyze-effort"] || process.env.DSH_CODEX_ANALYZE_EFFORT || "").trim();
+
+  return {
+    enabled: true,
+    model: normalizeModel(modelRequested || MODEL_ALIASES.get("pro")),
+    provider: providerRequested || null,
+    // normalizeReasoningEffort/normalizeModel fall back to DSH_CODEX_* env vars
+    // when given an empty string, so only call them with a real request here.
+    effort: effortRequested ? normalizeReasoningEffort(effortRequested) : null
+  };
 }
 
 function buildReviewPrompt({ adversarial, context, focusText }) {
@@ -334,6 +372,114 @@ async function executeTaskRun(request, context) {
   };
 }
 
+/**
+ * The analysis layer: a read-only research pass answers with a task brief, then
+ * a fresh execution session carries the brief out.
+ *
+ * Both turns are independent runDshTurn calls, so the route (model/effort) can
+ * differ between them. The analysis session is recorded on the job only as
+ * analysisSessionId; the job's sessionId is the execution session, which is the
+ * only one a later --resume may continue.
+ */
+async function executeAnalyzedTaskRun(request, context) {
+  const workspaceRoot = request.workspaceRoot;
+  const progress = context.progress || (() => {});
+
+  progress({ message: "Analysis pass: researching the task read-only before execution.", phase: "analyzing" });
+  const analysis = await runDshTurn({
+    cwd: request.cwd,
+    prompt: buildAnalysisPrompt({ workspaceRoot: workspaceRoot, userPrompt: request.prompt }),
+    sessionId: null,
+    model: request.analyze.model,
+    provider: request.analyze.provider,
+    reasoningEffort: request.analyze.effort,
+    dshProfile: request.dshProfile,
+    onProgress: progress,
+    onRuntime: context.onRuntime,
+    onSession: context.onSession
+  });
+
+  const brief = analysis.finalResponse;
+  const failureShape = {
+    exitStatus: analysis.exitStatus,
+    sessionId: null,
+    analysisSessionId: analysis.sessionId,
+    stopReason: analysis.stopReason,
+    errorMessage: analysis.errorMessage,
+    rendered: renderTaskResult({ rawOutput: "", failureMessage: analysis.errorMessage }),
+    summary: "Analysis pass failed.",
+    payload: {
+      jobId: request.jobId,
+      status: "failed",
+      sessionId: null,
+      analysisSessionId: analysis.sessionId,
+      analysisBrief: brief,
+      finalResponse: "",
+      stopReason: analysis.stopReason,
+      exitStatus: analysis.exitStatus,
+      errorMessage: analysis.errorMessage,
+      title: request.title
+    }
+  };
+
+  if (analysis.exitStatus !== 0) {
+    return failureShape;
+  }
+  if (!brief || !brief.trim()) {
+    return {
+      ...failureShape,
+      errorMessage: "The analysis pass produced an empty brief; refusing to execute an empty task specification.",
+      payload: {
+        ...failureShape.payload,
+        errorMessage: "The analysis pass produced an empty brief; refusing to execute an empty task specification."
+      }
+    };
+  }
+
+  progress({
+    message: "Analysis brief ready (" + String(brief).split(/\r?\n/).length + " lines). Executing on a fresh session.",
+    phase: "running"
+  });
+
+  const execution = await runDshTurn({
+    cwd: request.cwd,
+    prompt: buildDelegatedTaskPrompt({ workspaceRoot: workspaceRoot, userPrompt: brief, write: request.write }),
+    sessionId: null,
+    model: request.model,
+    provider: request.provider,
+    reasoningEffort: request.effort,
+    dshProfile: request.dshProfile,
+    onProgress: progress,
+    onRuntime: context.onRuntime,
+    onSession: context.onSession
+  });
+
+  return {
+    exitStatus: execution.exitStatus,
+    sessionId: execution.sessionId,
+    analysisSessionId: analysis.sessionId,
+    stopReason: execution.stopReason,
+    errorMessage: execution.errorMessage,
+    rendered: renderTaskResult(
+      { rawOutput: execution.finalResponse, failureMessage: execution.errorMessage },
+      { title: request.title, jobId: request.jobId }
+    ),
+    summary: firstMeaningfulLine(execution.finalResponse, execution.errorMessage || "DSH analyzed task finished."),
+    payload: {
+      jobId: request.jobId,
+      status: execution.exitStatus === 0 ? "completed" : "failed",
+      sessionId: execution.sessionId,
+      analysisSessionId: analysis.sessionId,
+      analysisBrief: brief,
+      finalResponse: execution.finalResponse,
+      stopReason: execution.stopReason,
+      exitStatus: execution.exitStatus,
+      errorMessage: execution.errorMessage,
+      title: request.title
+    }
+  };
+}
+
 async function executeReviewRun(request, context) {
   ensureGitRepository(request.cwd);
   const target = resolveReviewTarget(request.cwd, { base: request.base, scope: request.scope });
@@ -382,6 +528,9 @@ async function executeReviewRun(request, context) {
 }
 
 async function executeRequest(request, context) {
+  if (request.kind === "task" && request.analyze && request.analyze.enabled) {
+    return executeAnalyzedTaskRun(request, context);
+  }
   return request.kind === "task" || request.kind === "transfer"
     ? executeTaskRun(request, context)
     : executeReviewRun(request, context);
@@ -516,14 +665,20 @@ function buildTaskRequest({ cwd, workspaceRoot, jobId, options, prompt }) {
     effort: normalizeReasoningEffort(options.effort),
     dshProfile: String(options["dsh-profile"] || "").trim() || resolveProfile(),
     write: Boolean(options.write),
+    analyze: options.analyze
+      ? resolveAnalyzeRoute(options)
+      : { enabled: false, model: null, provider: null, effort: null },
     resumeSessionId: null
   };
 }
 
 async function handleTask(argv) {
   const { options, positionals } = parseCommandInput(argv, {
-    valueOptions: ["model", "provider", "effort", "cwd", "prompt-file", "dsh-profile"],
-    booleanOptions: ["json", "write", "resume-last", "resume", "fresh", "background", "wait"],
+    valueOptions: [
+      "model", "provider", "effort", "cwd", "prompt-file", "dsh-profile",
+      "analyze-model", "analyze-provider", "analyze-effort"
+    ],
+    booleanOptions: ["json", "write", "resume-last", "resume", "fresh", "background", "wait", "analyze"],
     aliasMap: { m: "model" }
   });
 
@@ -541,6 +696,11 @@ async function handleTask(argv) {
   if (options.background && options.wait) {
     throw new Error("Choose either --background or --wait.");
   }
+  if (options.analyze && resumeRequested) {
+    // The analysis layer runs its own fresh pipeline (research session + new
+    // execution session), so there is nothing previous to continue.
+    throw new Error("The analysis layer runs a fresh pipeline; do not combine --analyze with --resume/--resume-last.");
+  }
   if (!prompt && !resumeRequested) {
     throw new Error("Provide a prompt, a prompt file, piped stdin, or use --resume-last.");
   }
@@ -557,7 +717,7 @@ async function handleTask(argv) {
   const job = createJob({
     prefix: "task",
     kind: "task",
-    title: resumeRequested ? "DSH Resume" : "DSH Task",
+    title: options.analyze ? "DSH Analyzed Task" : resumeRequested ? "DSH Resume" : "DSH Task",
     workspaceRoot: workspaceRoot,
     summary: shorten(effectivePrompt),
     dshHome: resolveDshHome(),
