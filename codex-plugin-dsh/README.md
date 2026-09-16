@@ -35,6 +35,14 @@ codex plugin add dsh@dsh
 codex plugin list
 ```
 
+已发布到 GitHub 后，也可以直接用 git 源一条命令装（仓库根的 `.agents/plugins/marketplace.json`
+让 codex 认得出整个仓库）：
+
+```sh
+codex plugin marketplace add JiaMingWang-CN/codex-dsh
+codex plugin add dsh@dsh
+```
+
 安装成功后，新开的 Codex 会话会多出 4 个技能：
 
 | 技能 | 触发场景 |

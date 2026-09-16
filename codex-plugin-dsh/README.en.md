@@ -39,6 +39,14 @@ codex plugin add dsh@dsh
 codex plugin list
 ```
 
+Once published on GitHub, a git source works too — one command, no clone (the root
+`.agents/plugins/marketplace.json` is what makes codex recognize the whole repo):
+
+```sh
+codex plugin marketplace add JiaMingWang-CN/codex-dsh
+codex plugin add dsh@dsh
+```
+
 A new Codex session then exposes four skills:
 
 | Skill | Use it for |
