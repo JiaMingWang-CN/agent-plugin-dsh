@@ -1,6 +1,6 @@
 {
   "name": "dsh",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Delegate tasks and code review from Codex to DeepSeek Harness (DSH).",
   "keywords": [
     "dsh",

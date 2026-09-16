@@ -36,6 +36,15 @@ function log(line) {
   }
 }
 
+// The real 'dsh --version' prints its version and exits. Without this the fake
+// is an ACP server that ignores argv, so the companion's availability probe
+// would block until its timeout whenever FAKE_ACP_IGNORE_EOF holds the event
+// loop open past stdin EOF.
+if (process.argv.includes("--version")) {
+  process.stdout.write("fake-dsh 0.0.0\n");
+  process.exit(0);
+}
+
 function loadStore() {
   if (!storeFile || !fs.existsSync(storeFile)) {
     return { sessions: {} };
@@ -75,8 +84,16 @@ function configOptions(state) {
           group: "deepseek-official",
           name: "DeepSeek",
           options: [
-            { value: JSON.stringify(["deepseek-official", "deepseek-v4-flash"]), name: "DeepSeek-V4-Flash" },
-            { value: JSON.stringify(["deepseek-official", "deepseek-v4-pro"]), name: "DeepSeek-V4-Pro" }
+            {
+              value: JSON.stringify(["deepseek-official", "deepseek-v4-flash"]),
+              name: "DeepSeek-V4-Flash",
+              description: "Fast, efficient, and economical; suited to focused, routine, or parallel tasks."
+            },
+            {
+              value: JSON.stringify(["deepseek-official", "deepseek-v4-pro"]),
+              name: "DeepSeek-V4-Pro",
+              description: "Stronger agentic coding and difficult reasoning; suited to complex or quality-critical tasks."
+            }
           ]
         },
         {
@@ -113,6 +130,9 @@ function configOptions(state) {
 }
 
 let child = null;
+// A handle that holds the event loop open when the fake is asked to ignore
+// stdin EOF; without it an drained event loop exits on its own.
+let keepAlive = null;
 function ensureChild() {
   if (env.FAKE_ACP_SPAWN_CHILD !== "1" || child !== null) {
     return;
@@ -350,6 +370,9 @@ process.stdin.on("data", (chunk) => {
 process.stdin.on("end", () => {
   if (env.FAKE_ACP_IGNORE_EOF === "1") {
     log("ignored-eof");
+    if (keepAlive === null) {
+      keepAlive = setInterval(() => {}, 1000);
+    }
     return;
   }
   if (child !== null) {

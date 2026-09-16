@@ -74,17 +74,23 @@ export function renderRouteCatalog(payload) {
     if (!byProvider.has(route.provider)) {
       byProvider.set(route.provider, []);
     }
-    byProvider.get(route.provider).push(route.model);
+    byProvider.get(route.provider).push(route);
   }
-  for (const [provider, models] of byProvider) {
+  for (const [provider, routes] of byProvider) {
     lines.push("", provider + (provider === payload.preferredProvider ? "  (preferred on ambiguity)" : ""));
-    for (const model of models) {
-      lines.push("  " + model);
+    for (const route of routes) {
+      lines.push("  " + route.model);
+      if (route.description) {
+        lines.push("      " + route.description);
+      }
     }
   }
 
   if (payload.efforts.length > 0) {
-    lines.push("", `reasoning effort: ${payload.efforts.join(", ")}   (current: ${payload.currentEffort})`);
+    lines.push(
+      "",
+      `reasoning effort (one session-level knob; the values below are what the current model advertises): ${payload.efforts.join(", ")}   (current: ${payload.currentEffort})`
+    );
   }
   lines.push("", "Select with: task --model <model> [--provider <provider>] [--effort <effort>]");
   lines.push(

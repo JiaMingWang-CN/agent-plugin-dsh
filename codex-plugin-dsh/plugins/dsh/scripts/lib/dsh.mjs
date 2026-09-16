@@ -137,6 +137,7 @@ export class DshRuntime {
   #pending = new Map();
   #buffer = "";
   #exit = null;
+  #exitSignal = null;
   #spawnError = null;
   #stderrTail = [];
   #stderrRest = "";
@@ -158,8 +159,11 @@ export class DshRuntime {
       this.#spawnError = error;
       this.#failAll(new DshRuntimeError("failed to start " + this.command + ": " + error.message));
     });
-    child.once("exit", (code) => {
-      this.#exit = code === null || code === undefined ? 0 : code;
+    child.once("exit", (code, signal) => {
+      // A death by signal arrives as a null code plus the signal name. It is
+      // not a clean shutdown, so it must never be recorded as exit code 0.
+      this.#exitSignal = signal || null;
+      this.#exit = code === null || code === undefined ? (signal ? 1 : 0) : code;
       for (const waiter of this.#exitWaiters.splice(0)) {
         waiter(this.#exit);
       }
@@ -216,7 +220,7 @@ export class DshRuntime {
       parts.push("spawn error: " + this.#spawnError.message);
     }
     if (this.#exit !== null) {
-      parts.push("exit code: " + this.#exit);
+      parts.push("exit code: " + this.#exit + (this.#exitSignal ? " (signal " + this.#exitSignal + ")" : ""));
     }
     if (this.#stderrTail.length > 0) {
       parts.push("stderr tail:\n" + this.#stderrTail.join("\n"));
@@ -424,7 +428,7 @@ export class DshRuntime {
    */
   async shutdown() {
     if (this.#exit !== null) {
-      return { exited: true, code: this.#exit, method: "already-exited" };
+      return { exited: true, code: this.#exit, method: this.#exitSignal ? "signal:" + this.#exitSignal : "already-exited" };
     }
     try {
       this.#child.stdin.end();
@@ -433,7 +437,7 @@ export class DshRuntime {
     }
     const code = await this.#waitForExit(SHUTDOWN_EOF_TIMEOUT_MS);
     if (code !== null) {
-      return { exited: true, code: code, method: "stdin-eof" };
+      return { exited: true, code: code, method: this.#exitSignal ? "signal:" + this.#exitSignal : "stdin-eof" };
     }
     const terminated = await this.#terminate();
     return Object.assign({}, terminated, { method: "forced:" + terminated.method });
@@ -702,7 +706,18 @@ export function modelRoutes(configOptions) {
     for (const candidate of group) {
       const parsed = parseRouteValue(candidate.value);
       if (parsed) {
-        routes.push({ provider: parsed[0], model: parsed[1], value: candidate.value, name: candidate.name || parsed[1] });
+        routes.push({
+          provider: parsed[0],
+          model: parsed[1],
+          value: candidate.value,
+          name: candidate.name || parsed[1],
+          // The strength blurb the runtime advertises for this route, when it
+          // advertises one. Reasoning effort itself is a single session-level
+          // option, so this description is the only per-model strength signal.
+          description: typeof candidate.description === "string" && candidate.description.trim()
+            ? candidate.description.trim()
+            : null
+        });
       }
     }
   }

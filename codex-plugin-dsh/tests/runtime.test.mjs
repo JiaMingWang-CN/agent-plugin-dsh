@@ -452,6 +452,9 @@ test("a runtime that ignores stdin EOF is still cleaned up with a confirmed exit
   });
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, "FIXED-ANSWER", "the answer survives the forced cleanup");
+  // The fake now truly stays alive past stdin EOF, so the runtime must have
+  // been ended by the forced-termination ladder, not by a voluntary exit.
+  assert.match(result.stderr, /DSH runtime exited \(forced:/, "the shutdown was forced, not an EOF exit");
 });
 
 const gitAvailable = hasGit();
@@ -767,9 +770,28 @@ test("models reports the catalog the runtime advertises", () => {
   assert.equal(payload.currentEffort, "high");
   assert.ok(payload.discoverySessionId, "the throwaway session id is reported, not hidden");
 
+  const flash = payload.routes.find((route) => route.provider === "deepseek-official" && route.model === "deepseek-v4-flash");
+  assert.equal(
+    flash.description,
+    "Fast, efficient, and economical; suited to focused, routine, or parallel tasks.",
+    "the per-model strength description the runtime advertises is surfaced"
+  );
+  // A route the runtime describes only by name keeps a null description, not a fabricated one.
+  assert.equal(
+    payload.routes.find((route) => route.provider === "zai").description,
+    null,
+    "routes without a runtime description stay null instead of being invented"
+  );
+
   const text = sandbox.run(["models"]);
   assert.equal(text.status, 0, text.stderr);
   assert.match(text.stdout, /volcengine/);
+  assert.match(text.stdout, /routine, or parallel tasks/, "the text catalog shows each model's strength");
+  assert.match(
+    text.stdout,
+    /one session-level knob/,
+    "the text catalog says reasoning effort is one session-level knob, not per-model"
+  );
   assert.match(text.stdout, /stays in your DSH session store/, "the discovery cost is disclosed");
 });
 
@@ -820,6 +842,29 @@ test("an analyzed task fails without executing when the research pass fails", ()
   assert.equal(payload.exitStatus, 1);
   assert.equal(payload.sessionId, null, "no execution session exists to resume");
   assert.ok(payload.analysisSessionId, "the research session is still recorded");
+  const store = JSON.parse(fs.readFileSync(sandbox.sessionStore, "utf8"));
+  assert.equal(Object.keys(store.sessions).length, 1, "only the research session was created");
+});
+
+test("an analyzed task fails without executing when the brief is empty", () => {
+  const sandbox = makeSandbox("analyze-empty");
+  // The research turn ends normally but answers nothing, which must fail the
+  // job rather than execute an empty task specification.
+  const result = sandbox.run(["task", "--analyze", "--wait", "--json", "go"], { env: { FAKE_ACP_REPLY: "" } });
+  assert.equal(result.status, 1, result.stderr);
+  const payload = JSON.parse(result.stdout);
+  assertStableJsonKeys(payload);
+  assert.equal(payload.status, "failed");
+  assert.equal(payload.exitStatus, 1);
+  assert.equal(payload.stopReason, null, "no execution turn ran, so no stop reason is claimed");
+  assert.equal(payload.sessionId, null, "no execution session exists to resume");
+  assert.ok(payload.analysisSessionId, "the research session is still recorded");
+  assert.match(payload.errorMessage, /empty brief/);
+
+  const stored = JSON.parse(sandbox.run(["result", payload.jobId, "--json"]).stdout);
+  assert.equal(stored.job.status, "failed", "the recorded job is failed, not completed");
+  assert.equal(stored.resumable, false);
+
   const store = JSON.parse(fs.readFileSync(sandbox.sessionStore, "utf8"));
   assert.equal(Object.keys(store.sessions).length, 1, "only the research session was created");
 });

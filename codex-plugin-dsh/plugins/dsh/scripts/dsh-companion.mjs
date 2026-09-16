@@ -426,12 +426,24 @@ async function executeAnalyzedTaskRun(request, context) {
     return failureShape;
   }
   if (!brief || !brief.trim()) {
+    // The research turn ended cleanly but produced nothing executable, so the
+    // job is a failure: runTrackedJob derives its terminal status from this
+    // exit status, and the contract is that an empty brief fails the job.
+    // stopReason is nulled because it describes only the research turn and
+    // "end_turn" would imply exit 0 through exitStatusForStopReason, while no
+    // execution turn ever ran to justify a stop reason of its own.
+    const emptyBriefMessage =
+      "The analysis pass produced an empty brief; refusing to execute an empty task specification.";
     return {
       ...failureShape,
-      errorMessage: "The analysis pass produced an empty brief; refusing to execute an empty task specification.",
+      exitStatus: 1,
+      stopReason: null,
+      errorMessage: emptyBriefMessage,
       payload: {
         ...failureShape.payload,
-        errorMessage: "The analysis pass produced an empty brief; refusing to execute an empty task specification."
+        exitStatus: 1,
+        stopReason: null,
+        errorMessage: emptyBriefMessage
       }
     };
   }
@@ -837,7 +849,8 @@ async function handleModels(argv) {
       provider: route.provider,
       model: route.model,
       name: route.name,
-      value: route.value
+      value: route.value,
+      description: route.description
     })),
     efforts: discovered.efforts,
     currentEffort: discovered.currentEffort,
