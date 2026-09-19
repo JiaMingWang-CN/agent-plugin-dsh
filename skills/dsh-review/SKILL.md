@@ -22,8 +22,11 @@ Run every command as **one** shell invocation and return its stdout to the user 
 summarise, reformat, or editorialise. Progress lines arrive on stderr; keep them out of the answer
 unless the command failed.
 
-Give foreground calls a generous timeout: a real DSH turn can run for many minutes. Use
-`--background` for anything you expect to be long, then report the job id.
+Run `review` with `--wait` in the foreground and give the call a generous timeout: a real DSH turn
+can run for many minutes. Stay alive until it returns and hand DSH's final output back — do not
+detach `--background` for agent-directed work, because nothing would deliver the result to the
+invoking agent. Use `--background` only when the user explicitly asks to fire-and-forget a job, then
+report the job id and manage it with the `dsh-jobs` skill.
 
 ## Workflow
 
@@ -37,7 +40,7 @@ node "$DSH_COMPANION" review --adversarial --wait
 # a branch diff, with a focus
 node "$DSH_COMPANION" review --base main --wait "concurrency and error handling"
 
-# long reviews belong in the background
+# only when the user explicitly asked to fire-and-forget the job
 node "$DSH_COMPANION" review --background
 ```
 

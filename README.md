@@ -94,6 +94,8 @@ node scripts/dsh-companion.mjs cancel <job-id>
 
 在 Codex 中可以直接询问 DSH 作业状态；Claude Code 提供 `/dsh:status`、`/dsh:result` 和 `/dsh:cancel`。
 
+`--background` 是直接运行 CLI 时的选项。通过技能或斜杠命令委派时（Codex 的 `dsh-delegate` / `dsh-review`，Claude Code 的 `/dsh:rescue`、`/dsh:review`、`/dsh:adversarial-review`），代理会以前台 `--wait` 运行 DSH 并在结束时把最终输出返回给你；`/dsh:rescue` 和两个评审命令中的 `--background` / `--wait` 只决定宿主是否后台执行这次调用，不会让 DSH 脱离代理自行运行。
+
 ### 4. 续接会话
 
 ```sh

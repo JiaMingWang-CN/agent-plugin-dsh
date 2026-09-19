@@ -20,7 +20,11 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/dsh-companion.mjs" task-resume-candidate --j
 - Never invent a session and never carry context over by pasting a summary of the old conversation.
 
 Routing:
-- Route with the `Agent` tool and `subagent_type: "dsh:dsh-rescue"`, in the background when the request is open-ended, multi-step, or likely to run long; otherwise in the foreground.
+- `--background` and `--wait` in the request are host-side Agent execution controls, not companion flags:
+  - `--background`: route with the `Agent` tool and `subagent_type: "dsh:dsh-rescue"`, running the Agent call in the background. Claude notifies this conversation with the subagent's final output when DSH finishes.
+  - `--wait` or no explicit choice: route the same Agent call in the foreground.
+- Strip `--background` and `--wait` from the raw arguments before forwarding; never forward either token to the subagent, because the subagent's own skill contract permits `--background` when its user explicitly asks, and a forwarded token would detach the companion. Keep `--resume`, `--fresh`, `--model`, and `--effort` in the forwarded request.
+- Either way, the subagent itself runs the companion task in the foreground with `--wait` until DSH finishes, so DSH's final output reaches this conversation through the Agent result.
 - Leave `--resume` and `--fresh` in the forwarded request. Leave `--model` and `--effort` in it as runtime-selection flags but do not add them yourself unless the user asked.
 - The request is a thin forwarder only: it must not inspect the repository, poll status, fetch results, or summarize.
 

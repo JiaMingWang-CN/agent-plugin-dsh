@@ -128,6 +128,42 @@ test("the rescue command routes to the subagent instead of re-entering itself", 
   assert.match(source, /--fresh/);
 });
 
+test("the rescue command treats --background/--wait as host-side Agent controls", () => {
+  const source = read(path.join("commands", "rescue.md"));
+  assert.match(source, /host-side Agent execution controls/);
+  assert.match(source, /run_in_background: true|in the background/);
+  assert.match(source, /foreground with `--wait` until DSH finishes/);
+  assert.match(source, /Strip `--background` and `--wait` from the raw arguments before forwarding/);
+  assert.match(source, /never forward either token to the subagent/);
+  assert.match(source, /Keep `--resume`, `--fresh`, `--model`, and `--effort` in the forwarded request/);
+});
+
+test("the rescue subagent always runs the companion in the foreground with --wait", () => {
+  const source = read(path.join("agents", "dsh-rescue.md"));
+  assert.match(source, /foreground with `--wait`/);
+  assert.match(source, /Never pass `--background` to the companion/);
+  assert.match(
+    source,
+    /Treat `--background` and `--wait` in the received prompt as host execution flags, not task content: strip both tokens/,
+    "the subagent must strip host execution flags from any received prompt"
+  );
+  assert.doesNotMatch(source, /prefer background execution/);
+});
+
+test("review commands run the companion with --wait and detach only through Bash", () => {
+  for (const file of ["review.md", "adversarial-review.md"]) {
+    const source = read(path.join("commands", file));
+    assert.match(source, /host-side execution controls/i, file + " must describe the host-side flags");
+    assert.match(source, /never pass `--background` to it/, file + " must forbid a companion-detached worker");
+    for (const line of source.split(/\r?\n/)) {
+      if (line.includes("dsh-companion.mjs") && line.includes("review")) {
+        assert.match(line, /--wait/, file + " companion call must run --wait: " + line.trim());
+        assert.doesNotMatch(line, /--background/, file + " companion call must not take --background: " + line.trim());
+      }
+    }
+  }
+});
+
 test("the rescue subagent is a thin forwarder that carries the plugin skill", () => {
   const source = read(path.join("agents", "dsh-rescue.md"));
   const fields = frontmatter(source);

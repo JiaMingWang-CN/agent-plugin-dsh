@@ -94,6 +94,8 @@ node scripts/dsh-companion.mjs cancel <job-id>
 
 In Codex, ask for the DSH job status directly. Claude Code provides `/dsh:status`, `/dsh:result`, and `/dsh:cancel`.
 
+`--background` is an option for calling the CLI directly. When work is delegated through a skill or slash command (Codex's `dsh-delegate` / `dsh-review`, Claude Code's `/dsh:rescue`, `/dsh:review`, `/dsh:adversarial-review`), the agent runs DSH in the foreground with `--wait` and returns the final output to you when it finishes; the `--background` / `--wait` flags in `/dsh:rescue` and the two review commands only decide whether the host runs that call in the background — DSH never detaches from the agent on its own.
+
 ### 4. Resume a session
 
 ```sh

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Completion delivery to the directing agent: agent-directed runs now stay in the foreground so the
+  final DSH output reaches the agent that asked for the work. `/dsh:rescue` treats `--background` /
+  `--wait` as host-side Agent execution controls and the `dsh:dsh-rescue` subagent always runs the
+  companion task with `--wait` until DSH finishes, so Claude's native background Agent completion
+  delivers the final output. `/dsh:review` and `/dsh:adversarial-review` run the companion with
+  `--wait` and detach only through Claude's `Bash(..., run_in_background: true)` instead of letting
+  the companion spawn its own worker; the Codex `dsh-delegate` and `dsh-review` skills keep the
+  invoking agent alive with foreground `--wait` calls and return the final output. Direct CLI use is
+  unchanged: `task` / `review --background` still create jobs managed by `status` / `result` /
+  `cancel`, and cancellation and status behavior are untouched.
 - The repository root is now the plugin root, matching the layout used by multi-host plugins such
   as Superpowers. Manifests, skills, commands, hooks, prompts, and scripts no longer live under an
   extra `plugins/dsh/` directory; both marketplace files point directly at `./`.

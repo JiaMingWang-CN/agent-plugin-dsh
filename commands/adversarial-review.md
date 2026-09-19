@@ -30,18 +30,24 @@ Execution mode rules:
 - Recommend waiting only when the scoped review is clearly tiny (roughly 1-2 files). In every other case, including unclear size, recommend background. When in doubt, run the review.
 
 Foreground flow:
+- After stripping `--wait` / `--background` from the raw arguments, run:
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/dsh-companion.mjs" review --adversarial "$ARGUMENTS"
+node "${CLAUDE_PLUGIN_ROOT}/scripts/dsh-companion.mjs" review --adversarial --wait <remaining arguments>
 ```
 - Return the command stdout verbatim, exactly as-is. Do not paraphrase, summarize, or add commentary.
 
 Background flow:
+- After stripping `--wait` / `--background`, launch the review with `Bash` in the background:
 ```typescript
 Bash({
-  command: `node "${CLAUDE_PLUGIN_ROOT}/scripts/dsh-companion.mjs" review --adversarial "$ARGUMENTS"`,
+  command: `node "${CLAUDE_PLUGIN_ROOT}/scripts/dsh-companion.mjs" review --adversarial --wait <remaining arguments>`,
   description: "DSH adversarial review",
   run_in_background: true
 })
 ```
-- Do not call `BashOutput` or wait for completion in this turn.
+- Do not call `BashOutput` or wait for completion in this turn. Claude notifies the conversation with the command's output when it finishes.
 - After launching, tell the user: "DSH adversarial review started in the background. Check `/dsh:status` for progress."
+
+Host-side execution controls:
+- `--wait` and `--background` decide whether the Bash call runs in the foreground or with `run_in_background: true`.
+- Always run the companion itself with `--wait` in the foreground and never pass `--background` to it, so the companion does not detach its own background worker.

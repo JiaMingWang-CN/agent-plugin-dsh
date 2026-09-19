@@ -34,26 +34,27 @@ Execution mode rules:
   - `Run in background`
 
 Argument handling:
-- Preserve the user's arguments exactly. Do not strip `--wait` / `--background` yourself and do not rewrite the user's intent.
-- The companion parses `--wait` and `--background`, but Claude Code's `Bash(..., run_in_background: true)` is what actually detaches the run.
+- `--wait` and `--background` are host-side execution controls for this command: they decide whether the Bash call runs in the foreground or with `run_in_background: true`.
+- Always run the companion itself with `--wait` in the foreground and never pass `--background` to it, so the companion does not detach its own background worker; the Bash background mode is what detaches the run, and Claude delivers the output when it completes.
+- Strip `--wait` / `--background` from the raw arguments before composing the companion call; keep every other argument exactly as given. Do not rewrite the user's intent.
 - `/dsh:review` is native review only: it takes no focus text. Use `/dsh:adversarial-review` to challenge a design.
 
 Foreground flow:
-- Run:
+- After stripping `--wait` / `--background`, run:
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/dsh-companion.mjs" review "$ARGUMENTS"
+node "${CLAUDE_PLUGIN_ROOT}/scripts/dsh-companion.mjs" review --wait <remaining arguments>
 ```
 - Return the command stdout verbatim, exactly as-is. Do not paraphrase, summarize, or add commentary before or after it.
 - Do not fix any issue the review mentions. A real DSH turn can run for many minutes, so set a generous timeout.
 
 Background flow:
-- Launch the review with `Bash` in the background:
+- After stripping `--wait` / `--background`, launch the review with `Bash` in the background:
 ```typescript
 Bash({
-  command: `node "${CLAUDE_PLUGIN_ROOT}/scripts/dsh-companion.mjs" review "$ARGUMENTS"`,
+  command: `node "${CLAUDE_PLUGIN_ROOT}/scripts/dsh-companion.mjs" review --wait <remaining arguments>`,
   description: "DSH review",
   run_in_background: true
 })
 ```
-- Do not call `BashOutput` or wait for completion in this turn.
+- Do not call `BashOutput` or wait for completion in this turn. Claude notifies the conversation with the command's output when it finishes.
 - After launching, tell the user: "DSH review started in the background. Check `/dsh:status` for progress."
