@@ -16,8 +16,8 @@ import test, { after } from "node:test";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..");
-const COMPANION = path.join(REPO_ROOT, "plugins", "dsh", "scripts", "dsh-companion.mjs");
-const HOOK = path.join(REPO_ROOT, "plugins", "dsh", "scripts", "stop-review-gate-hook.mjs");
+const COMPANION = path.join(REPO_ROOT, "scripts", "dsh-companion.mjs");
+const HOOK = path.join(REPO_ROOT, "scripts", "stop-review-gate-hook.mjs");
 const FAKE_RUNTIME = path.join(HERE, "fake-acp-runtime.mjs");
 
 const tempDirs = [];
@@ -211,19 +211,19 @@ test("a blocking verdict also surfaces a still-running DSH job", async () => {
 });
 
 test("the manifest does not override the default hooks file", () => {
-  const manifest = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "plugins", "dsh", ".codex-plugin", "plugin.json"), "utf8"));
+  const manifest = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, ".codex-plugin", "plugin.json"), "utf8"));
   assert.equal(
     manifest.hooks,
     undefined,
     "a manifest hooks path replaces hooks/hooks.json, so it must stay unset"
   );
-  const claudeManifest = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "plugins", "dsh", ".claude-plugin", "plugin.json"), "utf8"));
+  const claudeManifest = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, ".claude-plugin", "plugin.json"), "utf8"));
   assert.equal(
     claudeManifest.hooks,
     undefined,
     "Claude Code discovers hooks/hooks.json on its own; a manifest override would register a second gate"
   );
-  const hooks = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "plugins", "dsh", "hooks", "hooks.json"), "utf8"));
+  const hooks = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "hooks", "hooks.json"), "utf8"));
   const handler = hooks.hooks.Stop[0].hooks[0];
   assert.equal(handler.type, "command");
   assert.equal(handler.async, undefined, "an async handler cannot apply control effects, so it can never block");

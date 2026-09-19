@@ -1,5 +1,5 @@
 /**
- * Unit tests for plugins/dsh/scripts/lib/process.mjs.
+ * Unit tests for scripts/lib/process.mjs.
  *
  * platform/killImpl/runCommandImpl/isAliveImpl are always injected: no real
  * process is signalled and no real time is ever waited on.
@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { isProcessAlive, terminateProcessTree } from "../plugins/dsh/scripts/lib/process.mjs";
+import { isProcessAlive, terminateProcessTree } from "../scripts/lib/process.mjs";
 
 const noopSleep = () => Promise.resolve();
 

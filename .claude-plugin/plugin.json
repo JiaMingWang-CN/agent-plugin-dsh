@@ -3,8 +3,12 @@
   "version": "0.2.0",
   "description": "Delegate tasks and code review from Claude Code or Codex to DeepSeek Harness (DSH).",
   "author": {
-    "name": "wjm"
+    "name": "wjm",
+    "url": "https://github.com/JiaMingWang-CN"
   },
+  "homepage": "https://github.com/JiaMingWang-CN/codex-dsh",
+  "repository": "https://github.com/JiaMingWang-CN/codex-dsh",
+  "license": "MIT",
   "keywords": [
     "dsh",
     "deepseek",

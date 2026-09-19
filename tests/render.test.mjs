@@ -1,4 +1,4 @@
-/** Unit tests for plugins/dsh/scripts/lib/render.mjs. */
+/** Unit tests for scripts/lib/render.mjs. */
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
@@ -8,7 +8,7 @@ import {
   renderSetupReport,
   renderStoredJobResult,
   renderTaskResult
-} from "../plugins/dsh/scripts/lib/render.mjs";
+} from "../scripts/lib/render.mjs";
 
 const SECRET = "sk-dsh-test-must-never-be-printed";
 

@@ -1,5 +1,5 @@
 /**
- * Unit tests for plugins/dsh/scripts/lib/git.mjs.
+ * Unit tests for scripts/lib/git.mjs.
  *
  * Every test owns a throwaway repository under os.tmpdir(); the whole suite is
  * skipped when git is not on PATH.
@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
 
-import { collectReviewContext, resolveReviewTarget } from "../plugins/dsh/scripts/lib/git.mjs";
+import { collectReviewContext, resolveReviewTarget } from "../scripts/lib/git.mjs";
 import { cleanup, gitAvailable, initGitRepo, makeTempDir, runGit, writeFile } from "./helpers.mjs";
 
 const tempDirs = [];

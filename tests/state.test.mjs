@@ -1,5 +1,5 @@
 /**
- * Unit tests for plugins/dsh/scripts/lib/state.mjs.
+ * Unit tests for scripts/lib/state.mjs.
  *
  * DSH_COMPANION_DATA is repointed at a fresh temp root for every test, so no
  * test can read or write the real per-user state root.
@@ -24,10 +24,10 @@ import {
   setConfig,
   upsertJob,
   writeJobFile
-} from "../plugins/dsh/scripts/lib/state.mjs";
-import { applyTerminalState, createJobProgressUpdater } from "../plugins/dsh/scripts/lib/tracked-jobs.mjs";
-import { findLatestResumableTaskJob } from "../plugins/dsh/scripts/lib/job-control.mjs";
-import { resolveWorkspaceRoot } from "../plugins/dsh/scripts/lib/workspace.mjs";
+} from "../scripts/lib/state.mjs";
+import { applyTerminalState, createJobProgressUpdater } from "../scripts/lib/tracked-jobs.mjs";
+import { findLatestResumableTaskJob } from "../scripts/lib/job-control.mjs";
+import { resolveWorkspaceRoot } from "../scripts/lib/workspace.mjs";
 import { cleanup, libPath, makeTempDir, runCompanion } from "./helpers.mjs";
 
 const originalDataRoot = process.env.DSH_COMPANION_DATA;

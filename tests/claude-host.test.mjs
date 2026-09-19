@@ -13,7 +13,7 @@ import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const PLUGIN_ROOT = path.join(REPO_ROOT, "plugins", "dsh");
+const PLUGIN_ROOT = REPO_ROOT;
 const PLUGIN_ROOT_LITERAL = "${CLAUDE_PLUGIN_ROOT}";
 
 function read(relativePath) {
@@ -46,14 +46,15 @@ test("both marketplaces and both plugin manifests carry one version", () => {
     pkg.version,
     readJson(".codex-plugin/plugin.json").version,
     readJson(".claude-plugin/plugin.json").version,
-    codexMarketplace.plugins[0].version,
-    claudeMarketplace.plugins[0].version,
-    claudeMarketplace.metadata.version
+    claudeMarketplace.plugins[0].version
   ];
   assert.deepEqual([...new Set(versions)], [pkg.version], "every manifest must carry the same version");
   assert.equal(claudeMarketplace.name, codexMarketplace.name);
   assert.equal(claudeMarketplace.plugins[0].name, "dsh");
-  assert.equal(claudeMarketplace.plugins[0].source, "./plugins/dsh");
+  assert.equal(claudeMarketplace.plugins[0].source, "./");
+  assert.deepEqual(codexMarketplace.plugins[0].source, { source: "url", url: "./" });
+  assert.equal(codexMarketplace.plugins[0].policy.authentication, "ON_INSTALL");
+  assert.equal(codexMarketplace.plugins[0].category, "Developer Tools");
 });
 
 test("the Claude manifest leaves component discovery alone", () => {

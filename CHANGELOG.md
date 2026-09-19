@@ -1,9 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- The repository root is now the plugin root, matching the layout used by multi-host plugins such
+  as Superpowers. Manifests, skills, commands, hooks, prompts, and scripts no longer live under an
+  extra `plugins/dsh/` directory; both marketplace files point directly at `./`.
+- Reworked both READMEs around installation, the basic workflow, optional capabilities,
+  troubleshooting, and the root-level component layout.
+
 ## 0.2.0
 
 - Claude Code host. The repository root now also carries `.claude-plugin/marketplace.json`, and
-  `plugins/dsh/.claude-plugin/plugin.json` describes the same plugin to Claude Code, so one install
+  `.claude-plugin/plugin.json` describes the same plugin to Claude Code, so one install
   serves both hosts (`codex plugin add dsh@dsh` and `/plugin install dsh@dsh`). Claude Code gains
   eight slash commands (`/dsh:setup`, `/dsh:review`, `/dsh:adversarial-review`, `/dsh:rescue`,
   `/dsh:status`, `/dsh:result`, `/dsh:cancel`, `/dsh:transfer`) and the `dsh:dsh-rescue` subagent;

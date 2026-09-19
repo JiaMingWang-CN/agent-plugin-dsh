@@ -6,12 +6,15 @@
   "plugins": [
     {
       "name": "dsh",
-      "source": "./plugins/dsh",
-      "policy": {
-        "installation": "AVAILABLE"
+      "source": {
+        "source": "url",
+        "url": "./"
       },
-      "version": "0.2.0",
-      "description": "Delegate tasks and code review from Codex to DeepSeek Harness (DSH)."
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
     }
   ]
 }

@@ -18,7 +18,7 @@ import test, { after } from "node:test";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..");
-const COMPANION = path.join(REPO_ROOT, "plugins", "dsh", "scripts", "dsh-companion.mjs");
+const COMPANION = path.join(REPO_ROOT, "scripts", "dsh-companion.mjs");
 const FAKE_RUNTIME = path.join(HERE, "fake-acp-runtime.mjs");
 
 const tempDirs = [];

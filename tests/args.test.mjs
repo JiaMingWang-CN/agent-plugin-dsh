@@ -1,9 +1,9 @@
-/** Unit tests for plugins/dsh/scripts/lib/args.mjs (parseArgs). */
+/** Unit tests for scripts/lib/args.mjs (parseArgs). */
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { parseArgs } from "../plugins/dsh/scripts/lib/args.mjs";
+import { parseArgs } from "../scripts/lib/args.mjs";
 
 /** The option surface of the "task" subcommand, plus a few aliases. */
 const TASK_CONFIG = {

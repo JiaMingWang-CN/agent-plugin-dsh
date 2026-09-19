@@ -10,7 +10,7 @@
 import assert from "node:assert";
 import { test } from "node:test";
 import { EventEmitter } from "node:events";
-import { DshRuntime } from "../plugins/dsh/scripts/lib/dsh.mjs";
+import { DshRuntime } from "../scripts/lib/dsh.mjs";
 
 /** A child that supports only the lifecycle the runtime observes. */
 function stubChild(pid = 4321) {

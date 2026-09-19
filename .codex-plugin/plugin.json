@@ -1,0 +1,36 @@
+{
+  "name": "dsh",
+  "version": "0.2.0",
+  "description": "Delegate tasks, code review, and background jobs from coding agents to DeepSeek Harness (DSH).",
+  "author": {
+    "name": "wjm",
+    "url": "https://github.com/JiaMingWang-CN"
+  },
+  "homepage": "https://github.com/JiaMingWang-CN/codex-dsh",
+  "repository": "https://github.com/JiaMingWang-CN/codex-dsh",
+  "license": "MIT",
+  "keywords": [
+    "dsh",
+    "deepseek",
+    "delegation",
+    "review"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "DeepSeek Harness",
+    "shortDescription": "Delegate tasks and reviews to DSH",
+    "longDescription": "Use DeepSeek Harness from Codex to delegate implementation and investigation, run standard or adversarial reviews, resume DSH sessions, and manage background jobs.",
+    "developerName": "wjm",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Ask DSH to investigate or implement this task.",
+      "Have DSH review the current workspace changes."
+    ],
+    "websiteURL": "https://github.com/JiaMingWang-CN/codex-dsh"
+  }
+}

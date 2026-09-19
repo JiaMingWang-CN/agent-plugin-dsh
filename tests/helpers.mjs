@@ -14,13 +14,13 @@ import { fileURLToPath } from "node:url";
 /** Absolute path to the agent-plugin-dsh workspace root. */
 export const repoRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 
-/** Absolute path of plugins/dsh/scripts/lib/<name>. */
+/** Absolute path of scripts/lib/<name>. */
 export function libPath(name) {
-  return path.join(repoRoot, "plugins", "dsh", "scripts", "lib", name);
+  return path.join(repoRoot, "scripts", "lib", name);
 }
 
 /** Absolute path of the companion entry point. */
-export const companionPath = path.join(repoRoot, "plugins", "dsh", "scripts", "dsh-companion.mjs");
+export const companionPath = path.join(repoRoot, "scripts", "dsh-companion.mjs");
 
 /** A fresh directory under os.tmpdir(); the caller owns it and must clean it up. */
 export function makeTempDir(prefix = "agent-plugin-dsh-") {
