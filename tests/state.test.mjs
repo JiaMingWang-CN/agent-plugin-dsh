@@ -142,12 +142,29 @@ describe("lib/state.mjs", () => {
     await Promise.all(ids.map((id) => new Promise((resolve, reject) => {
       const child = spawn(process.execPath, ["--input-type=module", "--eval", source, cwd, id], {
         env: { ...process.env, DSH_COMPANION_DATA: dataRoot },
-        stdio: "ignore"
+        stdio: ["ignore", "ignore", "pipe"]
       });
+      let stderr = "";
+      child.stderr.on("data", (chunk) => { stderr += chunk.toString("utf8"); });
       child.once("error", reject);
-      child.once("exit", (code) => code === 0 ? resolve() : reject(new Error("state writer exited " + code)));
+      child.once("exit", (code) => code === 0 ? resolve() : reject(new Error("state writer exited " + code + ": " + stderr.trim())));
     })));
     assert.deepEqual(listJobs(cwd).map((job) => job.id).sort(), ids.sort());
+  });
+
+  it("recovers an incomplete lock left by a crashed writer", () => {
+    const { cwd } = makeWorkspace();
+    const stateDir = resolveStateDir(cwd);
+    fs.mkdirSync(stateDir, { recursive: true });
+    const lockFile = path.join(stateDir, ".state.lock");
+    fs.writeFileSync(lockFile, "", "utf8");
+    const old = new Date(Date.now() - 31000);
+    fs.utimesSync(lockFile, old, old);
+
+    setConfig(cwd, "stopReviewGate", true);
+
+    assert.equal(getConfig(cwd).stopReviewGate, true);
+    assert.equal(fs.existsSync(lockFile), false);
   });
 
   it("keeps terminal job files terminal and mirrors result fields into state", () => {

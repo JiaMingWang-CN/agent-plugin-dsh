@@ -1,12 +1,23 @@
 {
   "name": "agent-plugin-dsh",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Plugin for Codex and Claude Code that delegates tasks and code review to DeepSeek Harness (DSH).",
+  "description": "Plugin for Codex, Claude Code, and pi that delegates tasks and code review to DeepSeek Harness (DSH).",
   "license": "MIT",
+  "keywords": [
+    "pi-package"
+  ],
   "engines": {
     "node": ">=18.18"
+  },
+  "pi": {
+    "extensions": [
+      "./.pi/extensions/dsh.ts"
+    ],
+    "skills": [
+      "./skills"
+    ]
   },
   "scripts": {
     "test": "node --test tests/*.test.mjs",

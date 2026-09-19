@@ -13,8 +13,9 @@ const JOBS_DIR_NAME = "jobs";
 const MAX_JOBS = 50;
 const LOCK_FILE_NAME = ".state.lock";
 const LOCK_WAIT_MS = 10;
-const LOCK_TIMEOUT_MS = 5000;
+const LOCK_OWNER_GRACE_MS = 1000;
 const STALE_LOCK_MS = 30000;
+const LOCK_TIMEOUT_MS = 35000;
 const heldLocks = new Map();
 
 function nowIso() {
@@ -84,7 +85,8 @@ function lockOwnerIsAlive(lockFile) {
 function removeStaleLock(lockFile) {
   try {
     const age = Date.now() - fs.statSync(lockFile).mtimeMs;
-    if (lockOwnerIsAlive(lockFile) === false || age > STALE_LOCK_MS) {
+    const ownerAlive = lockOwnerIsAlive(lockFile);
+    if (age > STALE_LOCK_MS || (ownerAlive === false && age > LOCK_OWNER_GRACE_MS)) {
       fs.unlinkSync(lockFile);
       return true;
     }

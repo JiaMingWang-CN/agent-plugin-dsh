@@ -1,6 +1,6 @@
 {
   "name": "dsh",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Delegate tasks, code review, and background jobs from coding agents to DeepSeek Harness (DSH).",
   "author": {
     "name": "wjm",

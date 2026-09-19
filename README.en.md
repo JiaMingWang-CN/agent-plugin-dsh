@@ -2,7 +2,7 @@
 
 [中文](README.md)
 
-A Codex and Claude Code plugin for handing complex work to **DeepSeek Harness (DSH)**. It lets your primary agent delegate implementation, resume DSH sessions, request independent code reviews, and manage background jobs.
+A Codex, Claude Code, and pi plugin for handing complex work to **DeepSeek Harness (DSH)**. It lets your primary agent delegate implementation, resume DSH sessions, request independent code reviews, and manage background jobs.
 
 ## Table of Contents
 
@@ -18,10 +18,10 @@ A Codex and Claude Code plugin for handing complex work to **DeepSeek Harness (D
 
 ## How it works
 
-1. Ask for delegation or review in natural language in Codex, or invoke a `/dsh:*` command in Claude Code.
+1. Ask for delegation or review in natural language in Codex or pi, or invoke a `/dsh:*` command in Claude Code.
 2. The plugin launches DSH's `acp` profile through the shared `scripts/dsh-companion.mjs` entry point.
 3. DSH works in the current workspace. The plugin either returns its final response verbatim or records a long-running task as a background job.
-4. Codex and Claude Code share the same workspace-scoped job store, so either host can inspect the same job.
+4. Codex, Claude Code, and pi share the same workspace-scoped job store, so any host can inspect the same job.
 
 The plugin does not bind a provider or maintain its own model catalog. Models, reasoning effort, and the real sandbox policy all come from DSH.
 
@@ -54,6 +54,14 @@ For local development, replace the repository name with the absolute path to thi
 
 For local development, the repository name can also be replaced with its absolute path.
 
+### pi
+
+```sh
+pi install git:github.com/JiaMingWang-CN/codex-dsh   # or pi install <path/to/the/repository>
+```
+
+For local development, `pi -e <path/to/the/repository>` loads it for the current run only, without writing to settings. Start a new pi session after installing: pi asks whether to trust the `.pi` directory on first use, because project-local extensions and skills load only for trusted projects. The plugin is not published to npm (`private: true`), so only a local path or a git source can be installed.
+
 ## The basic workflow
 
 ### 1. Check the environment
@@ -77,6 +85,12 @@ In Claude Code, use:
 /dsh:rescue investigate and fix this failing test
 ```
 
+In pi, call the `dsh_task` tool, or use the skill command:
+
+```text
+/skill:dsh-delegate investigate and fix this failing test
+```
+
 The shared script can also be called directly:
 
 ```sh
@@ -92,7 +106,7 @@ node scripts/dsh-companion.mjs result <job-id>
 node scripts/dsh-companion.mjs cancel <job-id>
 ```
 
-In Codex, ask for the DSH job status directly. Claude Code provides `/dsh:status`, `/dsh:result`, and `/dsh:cancel`.
+In Codex, ask for the DSH job status directly. Claude Code provides `/dsh:status`, `/dsh:result`, and `/dsh:cancel`; pi provides the `dsh_jobs` tool.
 
 `--background` is an option for calling the CLI directly. When work is delegated through a skill or slash command (Codex's `dsh-delegate` / `dsh-review`, Claude Code's `/dsh:rescue`, `/dsh:review`, `/dsh:adversarial-review`), the agent runs DSH in the foreground with `--wait` and returns the final output to you when it finishes; the `--background` / `--wait` flags in `/dsh:rescue` and the two review commands only decide whether the host runs that call in the background — DSH never detaches from the agent on its own.
 
@@ -111,7 +125,7 @@ node scripts/dsh-companion.mjs review --wait
 node scripts/dsh-companion.mjs review --adversarial --base main --wait "focus on concurrency"
 ```
 
-Codex triggers the `dsh-review` skill automatically. Claude Code provides `/dsh:review` and `/dsh:adversarial-review`.
+Codex triggers the `dsh-review` skill automatically. Claude Code provides `/dsh:review` and `/dsh:adversarial-review`; pi provides the `dsh_review` tool and `/skill:dsh-review`.
 
 For the complete CLI surface:
 
@@ -140,7 +154,7 @@ node scripts/dsh-companion.mjs setup --enable-review-gate
 node scripts/dsh-companion.mjs setup --disable-review-gate
 ```
 
-Only a first line of `BLOCK: <reason>` blocks the turn. A missing DSH, timeout, crash, or unparseable response allows the turn to finish. A host turn can be blocked at most once. Codex must also trust the plugin hook; Claude Code handles trust during installation.
+Only a first line of `BLOCK: <reason>` blocks the turn. A missing DSH, timeout, crash, or unparseable response allows the turn to finish. A host turn can be blocked at most once. Codex must also trust the plugin hook; Claude Code handles trust during installation; pi triggers the same gate at `agent_settled` — the moment pi will not continue on its own — and asks to trust the `.pi` directory on first use.
 
 ## What's inside
 
@@ -163,6 +177,15 @@ Claude Code also exposes these commands:
 | `/dsh:status` / `/dsh:result` / `/dsh:cancel` | Manage background jobs |
 | `/dsh:transfer` | Hand a Codex or Claude Code JSONL session to DSH |
 
+pi exposes these tools through its extension; the four skills above are shared by all three hosts and can also be invoked in pi as `/skill:dsh-*`:
+
+| Tool | Purpose |
+|---|---|
+| `dsh_task` | Delegate tasks and resume sessions |
+| `dsh_review` | Standard and adversarial code review |
+| `dsh_jobs` | Inspect, retrieve, and cancel background jobs |
+| `dsh_setup` | Diagnostics, list models, toggle the review gate |
+
 The repository itself is the plugin root:
 
 ```text
@@ -170,6 +193,7 @@ agent-plugin-dsh/
 ├── .agents/plugins/marketplace.json
 ├── .claude-plugin/{marketplace.json,plugin.json}
 ├── .codex-plugin/plugin.json
+├── .pi/extensions/dsh.ts
 ├── agents/
 ├── commands/
 ├── hooks/
@@ -219,6 +243,10 @@ Keep these constraints in mind:
 - `transfer` is a bounded transcript handoff, not a native session import, and does not accept `.jsonl.zst`.
 - ACP maps `completed`, `aborted`, and `blocked` to `end_turn`, so the plugin cannot distinguish them further.
 - `models` and the review gate leave DSH sessions behind because ACP cannot delete sessions.
+- pi exposes no slash commands of its own: use the `dsh_*` tools, or the `/skill:dsh-*` commands pi generates.
+- Session handoff (`transfer`) is not implemented for pi sessions; `transfer` accepts only Codex and Claude Code JSONL.
+- A DSH task aborted from pi: on Windows, terminating the plugin process also terminates the undetached ACP child; on POSIX the deliberately detached DSH runtime may survive, so stop it with `dsh_jobs` (`cancel`).
+- pi project-local extensions and skills require project trust: `pi list` shows the installed sources, and `/reload` reloads extensions and skills inside a session.
 
 ## Development
 

@@ -8,13 +8,13 @@ verification. Do not infer a host-specific layout from conventions used by other
 
 ## Project identity
 
-This repository is a single plugin for both Codex and Claude Code. The repository root is the
+This repository is a single plugin for Codex, Claude Code, and pi. The repository root is the
 plugin root. Do not recreate a `plugins/dsh/` wrapper or move shared components under a host-specific
 directory.
 
 The plugin delegates tasks and reviews to DeepSeek Harness (DSH) through the ACP profile. Keep the
-runtime host-neutral: Codex and Claude Code should use the same scripts, prompts, skills, hooks, and
-workspace-scoped job store.
+runtime host-neutral: Codex, Claude Code, and pi should use the same scripts, prompts, skills,
+hooks, and workspace-scoped job store.
 
 ## Repository layout
 
@@ -25,6 +25,7 @@ agent-plugin-dsh/                       # Plugin root; do not add another wrappe
 ├── .claude-plugin/
 │   ├── marketplace.json               # Claude Code marketplace; source points to ./
 │   └── plugin.json                    # Claude Code plugin manifest
+├── .pi/extensions/dsh.ts              # pi extension adapter (thin; logic lives in scripts/lib)
 ├── agents/                             # Thin Claude Code subagent definitions
 ├── commands/                           # Claude Code slash commands
 ├── hooks/hooks.json                    # Shared Stop review gate
@@ -35,7 +36,7 @@ agent-plugin-dsh/                       # Plugin root; do not add another wrappe
 │   ├── dsh-companion.mjs               # User-facing CLI entry point
 │   ├── stop-review-gate-hook.mjs       # Shared Stop hook entry point
 │   └── lib/                            # Runtime, git, state, process, and rendering helpers
-├── skills/                             # Skills used by both hosts
+├── skills/                             # Skills used by all three hosts
 ├── tests/                              # Node tests and fake ACP runtime
 ├── AGENTS.md                           # Authoritative repository instructions
 ├── CLAUDE.md                           # Claude Code pointer to AGENTS.md
@@ -186,8 +187,8 @@ When editing the READMEs:
 - State that the repository root is the plugin root.
 - Use root-relative examples such as `node scripts/dsh-companion.mjs ...`.
 - Never use `plugins/dsh/...` in commands, diagrams, or prose.
-- Keep Codex and Claude Code installation instructions separate because each host is installed and
-  refreshed independently.
+- Keep the Codex, Claude Code, and pi installation instructions separate because each host is
+  installed and refreshed independently.
 - Keep the skill and slash-command tables aligned with the actual contents of `skills/` and
   `commands/`.
 - Show a small set of representative commands. Point readers to

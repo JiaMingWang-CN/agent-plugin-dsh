@@ -7,7 +7,7 @@
     {
       "name": "dsh",
       "description": "Delegate tasks and code review from Claude Code or Codex to DeepSeek Harness (DSH).",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "author": {
         "name": "wjm"
       },

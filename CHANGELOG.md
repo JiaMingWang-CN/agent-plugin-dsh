@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- pi host. The repository root now also carries a pi package manifest (the `pi` key in
+  `package.json` with the `pi-package` keyword) and the `.pi/extensions/dsh.ts` adapter, so
+  `pi install <repository path or git source>` gives pi the same DSH abilities as Codex and
+  Claude Code: the `dsh_task`, `dsh_review`, `dsh_jobs`, and `dsh_setup` tools. The four
+  skills are shared by all three hosts and are invokable in pi as `/skill:dsh-*`; pi gets no
+  slash commands of its own because the tools plus the generated skill commands cover the whole
+  surface. Every tool is one call into the unchanged `scripts/dsh-companion.mjs` — argv
+  construction, the resume-candidate lookup, gate parsing, output formatting, and the child-process
+  helper live in the new `scripts/lib/pi-host.mjs`, and the tool parameters are hand-written plain
+  JSON Schema (pi-ai validates those through its `coerceWithJsonSchema` branch) so the adapter
+  keeps zero runtime imports and stays directly loadable by jiti.
+- The stop review gate runs in pi as well: it is wired to `agent_settled` — the moment pi will not
+  continue on its own — and reuses `scripts/stop-review-gate-hook.mjs` unchanged. A pi turn is
+  blocked at most once; the second settle carries `stop_hook_active` and is allowed, and only new
+  user input rearms the gate. A turn the user aborted (`stopReason: "aborted"`) is not reviewed,
+  and the gate stays fail-open like it does for the other two hosts.
+
 - Completion delivery to the directing agent: agent-directed runs now stay in the foreground so the
   final DSH output reaches the agent that asked for the work. `/dsh:rescue` treats `--background` /
   `--wait` as host-side Agent execution controls and the `dsh:dsh-rescue` subagent always runs the
