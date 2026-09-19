@@ -1,6 +1,12 @@
-# 会话/工具目录，不纳入版本管理
+node_modules/
+.probe-home/
+*.log
+*.tmp
+.DS_Store
+
+# 本地偏好与工具状态，不纳入版本管理
 preferences/
 .codegraph/
 
 # 规划文档，不提交
-codex-plugin-dsh/PLAN.md
+PLAN.md

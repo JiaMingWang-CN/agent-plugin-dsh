@@ -1,0 +1,15 @@
+{
+  "name": "dsh",
+  "version": "0.2.0",
+  "description": "Delegate tasks and code review from Claude Code or Codex to DeepSeek Harness (DSH).",
+  "author": {
+    "name": "wjm"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek",
+    "delegation",
+    "review",
+    "background-jobs"
+  ]
+}

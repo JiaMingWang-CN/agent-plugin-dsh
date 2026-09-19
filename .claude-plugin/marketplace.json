@@ -1,0 +1,21 @@
+{
+  "name": "dsh",
+  "owner": {
+    "name": "wjm"
+  },
+  "metadata": {
+    "description": "DeepSeek Harness (DSH) plugins for Claude Code and Codex: delegate tasks, run reviews, manage background jobs.",
+    "version": "0.2.0"
+  },
+  "plugins": [
+    {
+      "name": "dsh",
+      "description": "Delegate tasks and code review from Claude Code or Codex to DeepSeek Harness (DSH).",
+      "version": "0.2.0",
+      "author": {
+        "name": "wjm"
+      },
+      "source": "./plugins/dsh"
+    }
+  ]
+}
