@@ -44,6 +44,8 @@ const ROOT_DIR = path.resolve(SCRIPT_DIR, "..");
 const COMPANION = path.join(SCRIPT_DIR, "dsh-companion.mjs");
 const REVIEW_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_RESPONSE_CHARS = 24000;
+const CHANGE_CLAIM = /\b(?:add(?:ed|s|ing)?|chang(?:e|ed|es|ing)|creat(?:e|ed|es|ing)|delet(?:e|ed|es|ing)|edit(?:ed|s|ing)?|fix(?:ed|es|ing)?|implement(?:ed|s|ing)?|modif(?:y|ied|ies|ying)|mov(?:e|ed|es|ing)|patch(?:ed|es|ing)?|refactor(?:ed|s|ing)?|remov(?:e|ed|es|ing)|renam(?:e|ed|es|ing)|replac(?:e|ed|es|ing)|rewr(?:ite|ote|itten|iting)|updat(?:e|ed|es|ing)|writ(?:e|es|ing|ten|rote))\b|(?:新增|修改|更改|修复|实现|重构|删除|移除|重命名|替换|更新|写入|创建|移动)(?:了|完成|完毕)?/iu;
+const NEGATED_CHANGE_CLAIM = /\b(?:did not|didn't|have not|haven't)\s+(?:change|modify|edit|write|update)\b|\bno (?:files?|code|changes?) (?:were )?(?:changed|modified|made)\b|(?:未|没有|并未)(?:对)?(?:文件|代码|仓库)?(?:进行)?(?:修改|更改|写入|更新)/iu;
 
 function readHookInput() {
   const raw = fs.readFileSync(0, "utf8").trim();
@@ -59,6 +61,17 @@ function note(message) {
 
 function emitBlock(reason) {
   process.stdout.write(JSON.stringify({ decision: "block", reason: reason }) + "\n");
+}
+
+/**
+ * The gate is for repository changes, not every conversation turn. Hosts do not
+ * provide a reliable cross-host list of files changed in the current turn, so
+ * use the final response as a conservative local signal before spending a DSH
+ * turn. Ambiguous status reports and questions are allowed without a review.
+ */
+function claimsRepositoryChange(input) {
+  const response = String(input.last_assistant_message || "");
+  return CHANGE_CLAIM.test(response) && !NEGATED_CHANGE_CLAIM.test(response);
 }
 
 function buildPrompt(input) {
@@ -142,6 +155,12 @@ function main() {
     : null;
 
   if (!getConfig(workspaceRoot).stopReviewGate) {
+    note(runningNote);
+    return;
+  }
+
+  if (!claimsRepositoryChange(input)) {
+    note("dsh review gate: skipped because the final response did not report a repository change.");
     note(runningNote);
     return;
   }

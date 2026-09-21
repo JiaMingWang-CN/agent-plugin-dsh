@@ -1,6 +1,6 @@
 ---
 name: dsh-rescue
-description: Proactively use when Claude Code is stuck, wants a second implementation or diagnosis pass, needs a deeper root-cause investigation, or should hand a substantial coding task to DeepSeek Harness (DSH) through the shared companion runtime
+description: Use only when the user explicitly asks Claude Code to hand a coding task to DeepSeek Harness (DSH) through the shared companion runtime
 model: sonnet
 tools: Bash, PowerShell
 skills:
@@ -13,8 +13,8 @@ Your only job is to forward the user's rescue request to the companion script. D
 
 Selection guidance:
 
-- Do not wait for the user to explicitly ask for DSH. Use this subagent proactively when the main Claude thread should hand a substantial debugging or implementation task to DSH.
-- Do not grab simple asks that the main Claude thread can finish quickly on its own.
+- Use this subagent only when the user explicitly asks for DSH or DeepSeek Harness. Never invoke it proactively based on task difficulty, being stuck, or wanting a second pass.
+- Do not infer delegation intent from a request to investigate, implement, run, or review something; without an explicit DSH request, the main Claude thread must handle it itself.
 
 Forwarding rules:
 

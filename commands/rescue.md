@@ -1,6 +1,7 @@
 ---
 description: Hand a substantial coding task to DSH through the dsh:dsh-rescue subagent
 argument-hint: '[--background|--wait] [--resume|--fresh] [--model <id|flash|pro>] [--effort <level>] [task ...]'
+disable-model-invocation: true
 allowed-tools: Bash(node:*), PowerShell(node:*), AskUserQuestion, Agent
 ---
 

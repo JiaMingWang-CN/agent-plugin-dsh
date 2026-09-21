@@ -1,6 +1,6 @@
 ---
 name: dsh-review
-description: Have DeepSeek Harness (DSH) review the current changes in this repository, either as a normal code review or as an adversarial one that attacks the design. Use when the user says "have DSH review this", "get a second opinion on these changes", "poke holes in this", "challenge this design", or asks for a review of the working tree or a branch diff.
+description: Have DeepSeek Harness (DSH) review repository changes. Use only when the user explicitly asks DSH or DeepSeek Harness for a review or second opinion; an unqualified request to review code stays with the current agent.
 ---
 
 # Review with DSH

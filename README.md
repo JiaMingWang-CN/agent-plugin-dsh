@@ -154,7 +154,7 @@ node scripts/dsh-companion.mjs setup --enable-review-gate
 node scripts/dsh-companion.mjs setup --disable-review-gate
 ```
 
-只有首行明确返回 `BLOCK: <原因>` 才会阻断；DSH 缺失、超时、崩溃或输出无法解析时均放行。一次宿主轮次最多阻断一次。Codex 还需要信任插件 hook；Claude Code 在安装插件时处理信任；pi 在 `agent_settled`（pi 不再自动继续的时刻）触发同一个门，项目首次使用时需要信任 `.pi` 目录。
+钩子会先在本地检查最终答复，只有答复明确报告了仓库变更时才启动 DSH；提问、只读调查结果和纯状态汇报不会创建 DSH 会话。只有首行明确返回 `BLOCK: <原因>` 才会阻断；DSH 缺失、超时、崩溃或输出无法解析时均放行。一次宿主轮次最多阻断一次。Codex 还需要信任插件 hook；Claude Code 在安装插件时处理信任；pi 在 `agent_settled`（pi 不再自动继续的时刻）触发同一个门，项目首次使用时需要信任 `.pi` 目录。
 
 ## 包含内容
 
@@ -162,8 +162,8 @@ Codex 自动使用以下技能：
 
 | 技能 | 用途 |
 |---|---|
-| `dsh-delegate` | 委派任务和续接会话 |
-| `dsh-review` | 标准或挑战式代码评审 |
+| `dsh-delegate` | 仅在用户明确要求 DSH 时委派任务或续接会话 |
+| `dsh-review` | 用户明确要求的 DSH 代码评审 |
 | `dsh-jobs` | 查询、取回和取消后台作业 |
 | `dsh-setup` | 诊断 DSH 与插件配置 |
 
@@ -172,7 +172,7 @@ Claude Code 额外提供以下命令：
 | 命令 | 用途 |
 |---|---|
 | `/dsh:setup` | 自检并管理复审门 |
-| `/dsh:rescue` | 把任务交给 DSH 子代理 |
+| `/dsh:rescue` | 显式把任务交给 DSH 子代理 |
 | `/dsh:review` / `/dsh:adversarial-review` | 请求代码评审 |
 | `/dsh:status` / `/dsh:result` / `/dsh:cancel` | 管理后台作业 |
 | `/dsh:transfer` | 把 Codex 或 Claude Code JSONL 会话交给 DSH |

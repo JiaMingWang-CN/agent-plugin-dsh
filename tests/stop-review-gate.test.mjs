@@ -78,6 +78,14 @@ function enableGate(sandbox) {
   assert.equal(result.status, 0, result.stderr);
 }
 
+function sessionCount(sandbox) {
+  if (!fs.existsSync(sandbox.sessionStore)) {
+    return 0;
+  }
+  const store = JSON.parse(fs.readFileSync(sandbox.sessionStore, "utf8"));
+  return Object.keys(store.sessions || {}).length;
+}
+
 const stopInput = (sandbox, extra = {}) => ({
   session_id: "codex-session-1",
   turn_id: "turn-1",
@@ -96,6 +104,29 @@ test("a disabled gate writes nothing to stdout and exits 0", () => {
   const result = sandbox.gate(stopInput(sandbox));
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, "", "stdout stays empty so the hook is never recorded as failed");
+});
+
+test("an enabled gate skips questions without starting a DSH session", () => {
+  const sandbox = makeSandbox("gate-question");
+  enableGate(sandbox);
+  const result = sandbox.gate(stopInput(sandbox, {
+    last_assistant_message: "Which behavior should the parser use here?"
+  }));
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, "");
+  assert.match(result.stderr, /did not report a repository change/);
+  assert.equal(sessionCount(sandbox), 0);
+});
+
+test("an enabled gate skips read-only status without starting a DSH session", () => {
+  const sandbox = makeSandbox("gate-status");
+  enableGate(sandbox);
+  const result = sandbox.gate(stopInput(sandbox, {
+    last_assistant_message: "The test suite passes. I did not change any files."
+  }));
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, "");
+  assert.equal(sessionCount(sandbox), 0);
 });
 
 test("a BLOCK verdict blocks the stop with the review's reason", () => {

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- DSH invocation is now explicit and cheaper by default. The Stop review gate locally skips final
+  responses that do not report a repository change, so questions, read-only findings, and status
+  turns no longer open a DSH session. The delegate and review skills and Claude rescue subagent now
+  require the user to name DSH explicitly; `/dsh:rescue` is no longer model-invocable; and fresh
+  delegated work no longer probes for an old resumable session.
 - pi host. The repository root now also carries a pi package manifest (the `pi` key in
   `package.json` with the `pi-package` keyword) and the `.pi/extensions/dsh.ts` adapter, so
   `pi install <repository path or git source>` gives pi the same DSH abilities as Codex and

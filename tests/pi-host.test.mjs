@@ -552,7 +552,7 @@ test("the gate blocks once per turn and is rearmed only by new user input", { sk
     adapter.default(stub.api, {});
     const ctx = { cwd: sandbox.workspace, hasUI: true, ui: { setStatus: () => {} } };
 
-    await stub.emit("turn_end", { type: "turn_end", turnIndex: 0, message: { role: "assistant", content: [{ type: "text", text: "I shipped it." }], stopReason: "end_turn" } }, ctx);
+    await stub.emit("turn_end", { type: "turn_end", turnIndex: 0, message: { role: "assistant", content: [{ type: "text", text: "I implemented the requested change." }], stopReason: "end_turn" } }, ctx);
     process.env.FAKE_ACP_REPLY = "BLOCK: the change has no tests";
     await stub.emit("agent_settled", { type: "agent_settled" }, ctx);
     assert.equal(stub.sent.length, 1, "one block message is injected");
@@ -569,7 +569,7 @@ test("the gate blocks once per turn and is rearmed only by new user input", { sk
 
     // Fresh user input rearms the gate.
     await stub.emit("input", { type: "input", text: "thanks", source: "interactive" }, ctx);
-    await stub.emit("turn_end", { type: "turn_end", turnIndex: 2, message: { role: "assistant", content: [{ type: "text", text: "bye" }], stopReason: "end_turn" } }, ctx);
+    await stub.emit("turn_end", { type: "turn_end", turnIndex: 2, message: { role: "assistant", content: [{ type: "text", text: "I updated the requested files." }], stopReason: "end_turn" } }, ctx);
     process.env.FAKE_ACP_REPLY = "BLOCK: still unverified";
     await stub.emit("agent_settled", { type: "agent_settled" }, ctx);
     assert.equal(stub.sent.length, 2);

@@ -96,14 +96,12 @@ test("every command calls the companion through the plugin root and declares its
 });
 
 test("user-invoked commands stay out of the model's reach", () => {
-  for (const file of ["adversarial-review.md", "cancel.md", "result.md", "review.md", "status.md", "transfer.md"]) {
+  for (const file of ["adversarial-review.md", "cancel.md", "rescue.md", "result.md", "review.md", "status.md", "transfer.md"]) {
     const fields = frontmatter(read(path.join("commands", file)));
     assert.equal(fields["disable-model-invocation"], "true", file + " must be user-invoked only");
   }
-  for (const file of ["rescue.md", "setup.md"]) {
-    const fields = frontmatter(read(path.join("commands", file)));
-    assert.notEqual(fields["disable-model-invocation"], "true", file + " must stay model-invocable");
-  }
+  const setup = frontmatter(read(path.join("commands", "setup.md")));
+  assert.notEqual(setup["disable-model-invocation"], "true", "setup stays model-invocable for local diagnostics");
 });
 
 test("the review commands stay review-only", () => {
@@ -140,6 +138,8 @@ test("the rescue command treats --background/--wait as host-side Agent controls"
 
 test("the rescue subagent always runs the companion in the foreground with --wait", () => {
   const source = read(path.join("agents", "dsh-rescue.md"));
+  assert.match(source, /Use this subagent only when the user explicitly asks for DSH or DeepSeek Harness/);
+  assert.match(source, /Never invoke it proactively/);
   assert.match(source, /foreground with `--wait`/);
   assert.match(source, /Never pass `--background` to the companion/);
   assert.match(

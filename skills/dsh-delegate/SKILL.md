@@ -1,6 +1,6 @@
 ---
 name: dsh-delegate
-description: Delegate a coding task to DeepSeek Harness (DSH) or continue a previous DSH session. Use when the user says things like "ask DSH to ...", "let DeepSeek do ...", "hand this to dsh", "continue the DSH session", or otherwise asks another agent to investigate, fix, implement, or run something in this workspace.
+description: Delegate a coding task to DeepSeek Harness (DSH) or continue a previous DSH session. Use only when the user explicitly names DSH or DeepSeek Harness and asks it to investigate, fix, implement, run, or continue work.
 ---
 
 # Delegate to DSH
@@ -29,20 +29,13 @@ the job id and manage it with the `dsh-jobs` skill.
 
 ## Workflow
 
-1. Decide whether this continues earlier DSH work. If the user did not say, run exactly one
-   discovery call:
-
-   ```sh
-   node "$DSH_COMPANION" task-resume-candidate --json
-   ```
-
-2. If that reports `"available": true`, ask the user **exactly once**: "Continue the DSH session from
-   job <id>, or start a new one?" Then act on the answer.
-   If it reports `false`, start a new session without asking.
+1. Decide from the user's explicit wording whether this continues earlier DSH work. Requests such as
+   "continue the DSH session" or "ask DSH to keep going" resume; all other explicit DSH requests
+   start a fresh session. Do not probe for an old session when the user asked for new work.
    Never invent a session, and never carry context over by pasting a summary of the old
    conversation — only `--resume` restores the previous DSH context.
 
-3. Run the task:
+2. Run the task:
 
    ```sh
    # new session

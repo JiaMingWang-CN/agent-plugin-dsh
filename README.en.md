@@ -154,7 +154,7 @@ node scripts/dsh-companion.mjs setup --enable-review-gate
 node scripts/dsh-companion.mjs setup --disable-review-gate
 ```
 
-Only a first line of `BLOCK: <reason>` blocks the turn. A missing DSH, timeout, crash, or unparseable response allows the turn to finish. A host turn can be blocked at most once. Codex must also trust the plugin hook; Claude Code handles trust during installation; pi triggers the same gate at `agent_settled` — the moment pi will not continue on its own — and asks to trust the `.pi` directory on first use.
+The hook first checks the final response locally and starts DSH only when the response reports a repository change; questions, read-only findings, and status-only turns are allowed without opening a DSH session. Only a first line of `BLOCK: <reason>` blocks the turn. A missing DSH, timeout, crash, or unparseable response allows the turn to finish. A host turn can be blocked at most once. Codex must also trust the plugin hook; Claude Code handles trust during installation; pi triggers the same gate at `agent_settled` — the moment pi will not continue on its own — and asks to trust the `.pi` directory on first use.
 
 ## What's inside
 
@@ -162,8 +162,8 @@ Codex uses these skills automatically:
 
 | Skill | Purpose |
 |---|---|
-| `dsh-delegate` | Delegate tasks and resume sessions |
-| `dsh-review` | Standard and adversarial code review |
+| `dsh-delegate` | Delegate tasks and resume sessions when the user explicitly asks for DSH |
+| `dsh-review` | DSH review explicitly requested by the user |
 | `dsh-jobs` | Inspect, retrieve, and cancel background jobs |
 | `dsh-setup` | Diagnose DSH and plugin configuration |
 
@@ -172,7 +172,7 @@ Claude Code also exposes these commands:
 | Command | Purpose |
 |---|---|
 | `/dsh:setup` | Run diagnostics and manage the review gate |
-| `/dsh:rescue` | Hand a task to the DSH subagent |
+| `/dsh:rescue` | Explicitly hand a task to the DSH subagent |
 | `/dsh:review` / `/dsh:adversarial-review` | Request code review |
 | `/dsh:status` / `/dsh:result` / `/dsh:cancel` | Manage background jobs |
 | `/dsh:transfer` | Hand a Codex or Claude Code JSONL session to DSH |
